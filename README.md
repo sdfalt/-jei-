@@ -1,5 +1,7 @@
 # GTM JEI Startup Crash Fix（r17）
 
+本模组为AI编写  需要最新版的格雷科技现代版快照  还有jei物品管理器
+
 装了这个模组，**GregTech CEu Modern（GTM）8.0.0-SNAPSHOT 在 Minecraft 1.21.1 / NeoForge 上就不会在启动时崩溃，JEI 里也能重新看到格雷配方分类，点开配方页（如搅拌机）也不再必崩**（r17 修复，见版本历程）。本模组只在客户端生效。
 
 适用环境（实测）：

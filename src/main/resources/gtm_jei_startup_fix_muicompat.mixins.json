@@ -1,0 +1,14 @@
+{
+    "required": true,
+    "package": "cn.blockforge.gtmjeifix.mixin.muicompat",
+    "compatibilityLevel": "JAVA_21",
+    "minVersion": "0.8.5",
+    "injectors": {
+        "defaultRequire": 0
+    },
+    "client": [
+        "JeiEmbedWidgetMixin",
+        "MenuResizeClampMixin",
+        "MultiblockViewportShiftMixin"
+    ]
+}

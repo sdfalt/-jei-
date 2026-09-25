@@ -91,6 +91,13 @@ final class ClientIconFixupPolling {
             player.displayClientMessage(Component.literal(head + JeiDiagnostics.chatSummary()), false);
             player.displayClientMessage(Component.literal(head + "补注册状态："
                     + GtRegistrationBackfill.summary()), false);
+            // r24：多方块 3D 结构图位置校正的状态。只在装了 ModularUI（格雷界面库）时才说，
+            // 没装的话格雷配方页本来就不走那条渲染链，讲这句只会让人多看一行废话。
+            if (!"(没装)".equals(FixReport.modVersion("modularui"))) {
+                player.displayClientMessage(Component.literal(head
+                        + MultiblockEmbedOffset.statusLine()
+                        + "；" + MenuKeepOnScreen.statusLine()), false);
+            }
             player.displayClientMessage(Component.literal(head + "现场报告：游戏根目录 "
                     + FixReport.FILE_NAME + "；本次启动逐行日志："
                     + FixReport.logHint() + "（发回任意一份即可定位）"), false);

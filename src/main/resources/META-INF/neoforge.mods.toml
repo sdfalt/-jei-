@@ -1,0 +1,54 @@
+modLoader="javafml"
+loaderVersion="${loader_version_range}"
+license="${mod_license}"
+
+[[mods]]
+modId="${mod_id}"
+version="${mod_version}"
+displayName="${mod_name}"
+authors="AutoMods"
+description='''修复 GTM (GregTech CEu Modern) 8.0.0-SNAPSHOT 的启动崩溃与 JEI 分类缺失。崩溃一：GTRecipeCategories 静态初始化抢在 JEI 就绪前调用 GTJEIPlugin.getRuntime() 导致 NPE，未就绪时用「会自动恢复的占位图标」顶替，JEI 就绪后自动换成真实图标。分类缺失：GTM 该快照没把格雷配方分类注册进 JEI（注册行被官方注释/被守卫整体跳过），本模组在 GTM 注册流程出口按其自身注册表补齐分类、配方与机器定位（uid 去重，GTM 已注册的不重复补）。崩溃二（r17）：新版 JEI 重构掉了 ModularUI 依赖的 RecipeSlot 内部字段，导致一点开配方页就 MixinApplyError 崩溃，本模组在类转换时把缺的字段补回去。'''
+
+[[mixins]]
+config = "gtm_jei_startup_fix.mixins.json"
+
+# r17：独立的低 priority mixin 配置（priority 900 < ModularUI/格雷默认的 1000；
+# Mixin 的自然顺序是数字小的先应用）。
+# 用途：玩家第一次打开配方页时，JEI 的 RecipeSlot 类被加载转换，本配置抢在
+# ModularUI 的 @Accessor 之前把新版 JEI（19.3x 起重构）删掉的
+# allIngredients / displayIngredients 两个字段补回该类，
+# 消除「一点格雷配方页就崩（MixinApplyError: RecipeSlotAccessor）」的问题。
+# 单独一份配置是为了把「调整应用顺序」的影响面只限制在这个新锚 mixin 上，
+# 上面那份原有配置里三条 mixin 的行为与应用顺序保持原样。
+[[mixins]]
+config = "gtm_jei_startup_fix_jeicompat.mixins.json"
+
+[[dependencies.${mod_id}]]
+modId="neoforge"
+type="required"
+versionRange="${neo_version_range}"
+ordering="NONE"
+side="BOTH"
+
+[[dependencies.${mod_id}]]
+modId="minecraft"
+type="required"
+versionRange="${minecraft_version_range}"
+ordering="NONE"
+side="BOTH"
+
+# 这是 GTM 的配套修复模组：目标类来自 GTM，被拦截的方法签名引用 JEI API。
+# 缺少任意一个时 Mixin 无处生效，因此声明为必需依赖。
+[[dependencies.${mod_id}]]
+modId="gtceu"
+type="required"
+versionRange="[7,)"
+ordering="NONE"
+side="BOTH"
+
+[[dependencies.${mod_id}]]
+modId="jei"
+type="required"
+versionRange="[19,)"
+ordering="NONE"
+side="BOTH"

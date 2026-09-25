@@ -1,0 +1,48 @@
+plugins {
+    id 'java-library'
+    id 'net.neoforged.moddev' version '2.0.143'
+}
+version = mod_version
+group = mod_group_id
+base { archivesName = mod_id }
+java.toolchain.languageVersion = JavaLanguageVersion.of(21)
+neoForge {
+    version = project.neo_version
+    runs { client { client() }; server { server(); programArgument '--nogui' } }
+    mods { "${mod_id}" { sourceSet(sourceSets.main) } }
+}
+tasks.withType(JavaCompile).configureEach { options.encoding = 'UTF-8' }
+
+// ---- JEI 官方 API：只参与编译，绝不进成品 jar ----
+// 为什么这里必须用真家伙（r6、r7 两次崩溃都是在这一步偷的懒）：
+//   1) Mixin 的 @Inject 回调要与目标方法逐字节同签名，回调参数得写成真实接口类型
+//      （写 Object → InvalidInjectionException: Invalid descriptor → 模组加载失败，即 r6）；
+//   2) 更关键：Mixin 转换 Mixin 类自身时，会解析方法描述符**和局部变量表**里的每一个类名。
+//      r7 用几个「只有名字的空接口」当锚点又不打进 jar，其中 ICatalystRegistration、
+//      IMenuCategoryDataRegistrar 两个名字在 JEI 19 里根本不存在（前者现名
+//      IRecipeCatalystRegistration，后者已被移除），运行期直接抛
+//      ClassMetadataNotFoundException —— require = 0 也救不了，因为炸的是「类转换」而不是「方法匹配」。
+// 现在直接依赖 JEI 官方 api jar，与用户实装的 19.56.0.441 **同一版本**：
+// 类名写错就编译不过，错不到玩家的游戏里去了。
+// （r8 时用户实装 19.27.0.340；本模组用到的所有接口在两版之间逐字节一致，
+//   r9 起对齐到玩家机器上真正跑着的那一份。）
+//
+// jar 从哪来：JEI 文档给的 maven https://modmaven.dev/mezz/jei/jei-1.21.1-common-api/<版本>/
+// 已下载并随工程固定到 libs/（共 140KB，SHA1 见 README「构建」一节），
+// 好处是编译不需要网络、也不可能被别的版本悄悄替换。
+// 升级版本时：下载同名两个 jar 放进 libs/，同时改 gradle.properties 里的 jei_version。
+dependencies {
+    compileOnly files("libs/jei-1.21.1-common-api-${jei_version}.jar",
+                      "libs/jei-1.21.1-neoforge-api-${jei_version}.jar")
+}
+// 双保险：compileOnly 本来就不打包，再显式挡一道，防止将来有人改成 implementation。
+jar { exclude 'mezz/**' }
+processResources {
+    def props = [minecraft_version: minecraft_version, minecraft_version_range: minecraft_version_range,
+                 neo_version: neo_version, neo_version_range: neo_version_range,
+                 loader_version_range: loader_version_range,
+                 mod_id: mod_id, mod_name: mod_name, mod_license: mod_license, mod_version: mod_version]
+    inputs.properties props
+    filteringCharset = 'UTF-8'
+    filesMatching('META-INF/neoforge.mods.toml') { expand props }
+}

@@ -6,6 +6,11 @@ license="${mod_license}"
 modId="${mod_id}"
 version="${mod_version}"
 displayName="${mod_name}"
+# 模组封面：游戏内「Mods / 模组列表」界面与各类启动器「模组管理」里本模组的展示图。
+# 路径相对 jar 根目录；r19 起指向 jar 根部的 logo.png（与 assets 下那份是同一张图，
+# 根目录短路径对最多加器友好度最高）。图在用户提供的封面基础上把白色背景重绘成了
+# 深色电路板科技风（生成脚本 tools/make_cover.py，可复跑，会自动同步两处文件）。
+logoFile="logo.png"
 authors="AutoMods"
 description='''修复 GTM (GregTech CEu Modern) 8.0.0-SNAPSHOT 的启动崩溃与 JEI 分类缺失。崩溃一：GTRecipeCategories 静态初始化抢在 JEI 就绪前调用 GTJEIPlugin.getRuntime() 导致 NPE，未就绪时用「会自动恢复的占位图标」顶替，JEI 就绪后自动换成真实图标。分类缺失：GTM 该快照没把格雷配方分类注册进 JEI（注册行被官方注释/被守卫整体跳过），本模组在 GTM 注册流程出口按其自身注册表补齐分类、配方与机器定位（uid 去重，GTM 已注册的不重复补）。崩溃二（r17）：新版 JEI 重构掉了 ModularUI 依赖的 RecipeSlot 内部字段，导致一点开配方页就 MixinApplyError 崩溃，本模组在类转换时把缺的字段补回去。'''
 

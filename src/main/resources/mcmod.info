@@ -1,0 +1,14 @@
+[
+  {
+    "modid": "${mod_id}",
+    "name": "${mod_name}",
+    "description": "GTM JEI Startup Crash Fix: fixes the GTM (GregTech CEu Modern) startup crash and missing JEI recipe categories.",
+    "version": "${mod_version}",
+    "logoFile": "logo.png",
+    "url": "",
+    "authorList": [
+      "AutoMods"
+    ],
+    "dependencies": []
+  }
+]

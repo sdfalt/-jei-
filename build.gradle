@@ -44,5 +44,25 @@ processResources {
                  mod_id: mod_id, mod_name: mod_name, mod_license: mod_license, mod_version: mod_version]
     inputs.properties props
     filteringCharset = 'UTF-8'
-    filesMatching('META-INF/neoforge.mods.toml') { expand props }
+    // META-INF/mods.toml（r19 新增）：给第三方启动器的「兼容副本」。
+    // NeoForge 把模组元数据改名为 META-INF/neoforge.mods.toml；HMCL 旧版只认旧文件名
+    // （新版两个都读），读不到旧文件名就展示不出 logoFile 封面。
+    // 为什么放它绝对安全（已反汇编本工程所用 FML loader-4.0.43 核实）：
+    //   1) ModDiscoverer$DiscoveryPipeline.addJarContent 只在所有 reader 都读不出
+    //      mod 文件时才走 IncompatibleModReason.detect()；我们的 jar 有
+    //      neoforge.mods.toml，JarModsDotTomlModFileReader 必然成功，轮不到这个检查；
+    //   2) detect() 里 MINECRAFT_FORGE 的判定是"存在 META-INF/mods.toml"，仅对
+    //      读不出来的 jar 生效，对本 jar 永远不可达。
+    // 该副本刻意无注释、无多行字符串：兼容的正是语法支持最差的解析器。
+    //
+    // mcmod.info（r20 新增）：给 PCL2 社区版（PCL2-CE）的封面入口。
+    // 核实过 PCL2-CE 源码 Modules/Minecraft/ModLocalComp.cs：它的「本地识别」里
+    // 只有 mcmod.info / fabric.mod.json / quilt.mod.json 三个分支会从 jar 里
+    // 提取 logoFile 图片；mods.toml / neoforge.mods.toml 分支只取名称/描述/版本，
+    // 不取封面。Forge 1.13+/NeoForge 游戏本体完全不读 mcmod.info（那是 1.12- 的
+    // 元数据），放一份纯粹是给人性化启动器看的，对游戏零影响。
+    // 注意：官方 PCL2（pcl2.com 版本）经源码核实根本不打开模组 jar，图标只按
+    // 文件 sha1 联网匹配 Modrinth/CurseForge，本地构建的 jar 在官方 PCL2 里
+    // 无法显示自带封面——这不是元数据能解决的，已在交付说明里如实告知用户。
+    filesMatching(['META-INF/neoforge.mods.toml', 'META-INF/mods.toml', 'mcmod.info']) { expand props }
 }

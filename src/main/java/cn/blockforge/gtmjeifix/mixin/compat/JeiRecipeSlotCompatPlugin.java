@@ -125,6 +125,18 @@ public class JeiRecipeSlotCompatPlugin implements IMixinConfigPlugin {
             if (done || targetClass == null || !TARGET.equals(targetClass.name)) {
                 return;
             }
+            // r34：独立开关。RecipeSlot 一辈子只被类转换一次，所以这一条以本次启动
+            // 第一次打开配方页那一刻读到的值为准，改开关下次重启才彻底重算（配置注释里也写了）。
+            // 注意不能顺手置 done：那会把「稍后才读到配置说是开」的路也堵死。
+            if (!cn.blockforge.gtmjeifix.FixConfig.recipeSlotCompatEnabled()) {
+                LOGGER.info("[gtm_jei_startup_fix] RecipeSlot 兼容补丁已按配置关闭"
+                        + "（{} 里 fixes.enableRecipeSlotCompat=false），本次不补字段。"
+                        + "若你的 ModularUI 还会往缺字段里写数据，打开配方页会像以前一样崩溃——改回 true 并重启即可。",
+                        cn.blockforge.gtmjeifix.FixConfig.filePathHint());
+                FixReport.note("[兼容补丁] 已按配置关闭（fixes.enableRecipeSlotCompat=false），"
+                        + "本次不向 RecipeSlot 补字段。");
+                return;
+            }
             done = true;
 
             if (!modularuiPresent()) {

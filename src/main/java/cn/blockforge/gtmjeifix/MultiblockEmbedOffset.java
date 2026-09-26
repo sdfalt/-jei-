@@ -111,14 +111,14 @@ public final class MultiblockEmbedOffset {
         return inside;
     }
 
-    /** 当前该加到 GL 视口上的 X 偏移；不在内嵌绘制中（或值已过期）就是 0。 */
+    /** 当前该加到 GL 视口上的 X 偏移；不在内嵌绘制中（或值已过期、或 r34 开关关了）就是 0。 */
     public static int x() {
-        return valid() ? offX : 0;
+        return valid() && FixConfig.multiblockOffsetEnabled() ? offX : 0;
     }
 
-    /** 当前该加到 GL 视口上的 Y 偏移；不在内嵌绘制中（或值已过期）就是 0。 */
+    /** 当前该加到 GL 视口上的 Y 偏移；不在内嵌绘制中（或值已过期、或 r34 开关关了）就是 0。 */
     public static int y() {
-        return valid() ? offY : 0;
+        return valid() && FixConfig.multiblockOffsetEnabled() ? offY : 0;
     }
 
     private static boolean valid() {
@@ -159,8 +159,11 @@ public final class MultiblockEmbedOffset {
         }
     }
 
-    /** 给现场报告 / 聊天摘要用的一行结论（三种情况都覆盖）。 */
+    /** 给现场报告 / 聊天摘要用的一行结论（四种情况都覆盖）。 */
     public static String statusLine() {
+        if (!FixConfig.multiblockOffsetEnabled()) {
+            return "多方块预览校正：已按配置关闭（fixes.enableMultiblockEmbedOffset=false）";
+        }
         if (disabled) {
             return "多方块预览校正：已停用（连续捕获异常，已退回未打补丁的行为）";
         }

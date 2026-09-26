@@ -28,6 +28,13 @@ import java.util.List;
  * ② 游戏根目录 {@link #LOG_DIR_NAME} 文件夹里<b>本次启动专属</b>的一份
  * （文件名带启动时刻、每行带时间戳，见 {@link StartupLog}）。
  * 于是「上一次能进、这一次进不去」这种问题也有据可查，旧现场不会被顶掉。
+ *
+ * <p><b>r34 起：这份文件的存在本身由 {@code report.enabled} 决定</b>（{@code FixConfig}）。
+ * NeoForge 在模组构造之后才读配置，所以「配置读到之前」进来的行先攒在内存（本类的
+ * {@link #LINES}），读到那一刻才按开关落盘或从此不再落盘——
+ * 保证玩家说「不写」时，本次启动这个文件一个字节都不会变。
+ * 万一配置事件迟迟不来（异常环境），5 秒后按默认值（写）放行，诊断能力不打折。
+ * 关掉后<b>已存在的旧文件保持原样</b>，本模组不去删别人的历史。
  */
 public final class FixReport {
 
@@ -43,9 +50,16 @@ public final class FixReport {
      */
     public static final String LOG_DIR_NAME = StartupLog.DIR_NAME;
 
+    /** 攒着的全部行：内存里始终完整（聊天摘要、{@code /gtmfix} 都读它）。 */
     private static final List<String> LINES = new ArrayList<>();
     /** 落盘失败过一次就不再重试（不影响 note 继续累积，供聊天摘要用）。 */
     private static boolean fileDisabled = false;
+    /** r34：配置已读到且 {@code report.enabled=true}（或兜底时限已过）才允许落盘。 */
+    private static boolean live = false;
+    /** r34：第一次想落盘但配置还没读到的时刻（5 秒兜底时限的起点）。 */
+    private static long firstWantMillis = 0;
+    /** 与 {@link StartupLog#DECIDE_FALLBACK_MS} 同义；那边是包私有，这里自己写一个。 */
+    private static final long LIVE_FALLBACK_MS = 5_000L;
 
     private FixReport() {}
 
@@ -66,6 +80,7 @@ public final class FixReport {
             LINES.addAll(head);
         }
         // r16：同一次启动再写一份「按启动留档」的日志（每行都带时间戳，只追加不覆盖）
+        // r34：这两处都不再当场落盘——配置读到后按 report.enabled / logs.writeStartupLog 决定。
         StartupLog.open(head);
         flush();
         note("[启动日志] 本次这一份：" + StartupLog.dirHint()
@@ -82,7 +97,33 @@ public final class FixReport {
         return StartupLog.absolutePath();
     }
 
-    /** 记一行进度并立刻落盘。任何调用方都不需要自己 try/catch。 */
+    /** r34：/gtmfix 用——根目录那份报告的绝对路径（拿不到游戏根目录时 "(未知)"）。 */
+    public static String reportPath() {
+        Path f = reportFile();
+        try {
+            return f == null ? "(未知)" : f.toAbsolutePath().normalize().toString();
+        } catch (Throwable e) {
+            return "(未知)";
+        }
+    }
+
+    /** r34：/gtmfix 用——那份报告文件现在在不在（{@code report.enabled=false} 时本次不会有新的）。 */
+    public static String reportStateLine() {
+        Path f = reportFile();
+        if (f == null) return "(拿不到游戏根目录)";
+        try {
+            if (!Files.exists(f)) {
+                return "本次没写（文件还不存在或 " + (live ? "没建" : "report.enabled=关/还没读到配置") + "）";
+            }
+            long size = Files.size(f);
+            return "存在，" + size + " 字节" + (live ? "（本次一直在更新）" : "（本次的旧内容，现在没在更新）");
+        } catch (Throwable e) {
+            return "存在（大小读不了）";
+        }
+    }
+
+    /** 记一行进度并尝试立刻落盘（r34：配置读到前、或 {@code report.enabled=false} 时只留内存）。
+     *  任何调用方都不需要自己 try/catch。 */
     public static void note(String line) {
         try {
             synchronized (LINES) {
@@ -126,6 +167,7 @@ public final class FixReport {
 
     private static void flush() {
         if (fileDisabled) return;
+        if (!writesAllowed()) return;   // r34：配置没读到 / 开关说别写 —— 一个字都不落盘，行留在 LINES 里
         try {
             Path file = reportFile();
             if (file == null) {
@@ -137,6 +179,33 @@ public final class FixReport {
             fileDisabled = true;
             LOGGER.debug("[gtm_jei_startup_fix] 现场报告写不进游戏目录（{}），"
                     + "改为只保留聊天与日志输出：{}", String.valueOf(pathOrNull()), t.toString());
+        }
+    }
+
+    /**
+     * r34：现在许不许往根目录写这份报告。判定顺序：
+     * ① 配置已读到 → 就按 {@code report.enabled}（中途从关拧回开也在这里翻回来）；
+     * ② 配置还没读到 → 先不许（这就是「关了开关就一个字节都不写」能成立的原因——
+     *    构造期的那些行都攒在内存，等这一刻才定）；
+     * ③ 但最多等 {@link #LIVE_FALLBACK_MS}：异常环境里配置事件一直不来时按默认值（写）放行，
+     *    保证最坏情况也保有 r32 的诊断能力。
+     */
+    private static boolean writesAllowed() {
+        try {
+            if (FixConfig.isLoaded()) {
+                live = FixConfig.reportEnabled();
+                return live;
+            }
+            long now = System.currentTimeMillis();
+            if (firstWantMillis == 0) {
+                firstWantMillis = now;
+            } else if (now - firstWantMillis >= LIVE_FALLBACK_MS) {
+                live = FixConfig.reportEnabled();   // 默认 true；真读到了也会在下面第一路纠正
+                return live;
+            }
+            return false;
+        } catch (Throwable e) {
+            return live;   // 判定本身出错就维持上一次结论，绝不因此抛异常
         }
     }
 

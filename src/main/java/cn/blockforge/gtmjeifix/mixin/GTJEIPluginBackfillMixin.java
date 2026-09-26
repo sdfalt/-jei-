@@ -1,5 +1,6 @@
 package cn.blockforge.gtmjeifix.mixin;
 
+import cn.blockforge.gtmjeifix.FixConfig;
 import cn.blockforge.gtmjeifix.GtRegistrationBackfill;
 
 import com.mojang.logging.LogUtils;
@@ -73,6 +74,10 @@ public class GTJEIPluginBackfillMixin {
             require = 0,
             remap = false)
     private void gtmjeifix$takeOverRegisterCategories(IRecipeCategoryRegistration registration, CallbackInfo ci) {
+        // r34：开关关了 → 不取消、不接管，GTM 原方法照跑（它自己修好了就该长这样）
+        if (!FixConfig.categoryBackfillEnabled()) {
+            return;
+        }
         ci.cancel();
         LOGGER.debug("[gtm_jei_startup_fix] 挂钩命中（HEAD 接管）：GTM#registerCategories");
         GtRegistrationBackfill.replaceCategories(registration);
@@ -86,6 +91,9 @@ public class GTJEIPluginBackfillMixin {
             require = 0,
             remap = false)
     private void gtmjeifix$takeOverRegisterRecipes(IRecipeRegistration registration, CallbackInfo ci) {
+        if (!FixConfig.categoryBackfillEnabled()) {   // r34：与 registerCategories 同一条开关
+            return;
+        }
         ci.cancel();
         LOGGER.debug("[gtm_jei_startup_fix] 挂钩命中（HEAD 接管）：GTM#registerRecipes");
         GtRegistrationBackfill.replaceRecipes(registration);
@@ -98,6 +106,9 @@ public class GTJEIPluginBackfillMixin {
             require = 0,
             remap = false)
     private void gtmjeifix$afterRegisterCatalysts(IRecipeCatalystRegistration registration, CallbackInfo ci) {
+        if (!FixConfig.categoryBackfillEnabled()) {   // r34：关了就不再顺带补催化剂（那条路径也属于补注册）
+            return;
+        }
         LOGGER.debug("[gtm_jei_startup_fix] 挂钩命中：GTM#registerRecipeCatalysts");
         GtRegistrationBackfill.onCatalystsTail(registration);
     }

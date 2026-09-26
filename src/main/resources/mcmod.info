@@ -2,7 +2,7 @@
   {
     "modid": "${mod_id}",
     "name": "${mod_name}",
-    "description": "修复 GregTech CEu Modern (GTM) 8.0.0-SNAPSHOT 的启动崩溃与 JEI 显示问题：启动 NPE、JEI 里格雷配方分类缺失、点开配方页崩溃、多方块 3D 结构图偏左上角、控制器「可使用的类型」菜单开出屏幕外（先减掉该行按钮的滚动位移再按屏幕上的真实位置重摆，放不下就翻到按钮上方；认不准就完全不动）。仅客户端生效；【配置】r32 新增 config/gtm_jei_startup_fix.toml（注释中英双语）：joinChatReminder 控制进世界聊天提醒开/关；startupLogKeep 控制 gtm_jei_logs 保留几份启动日志（-1 = 一份都不删）。运行日志见游戏根目录 gtm_jei_fix_report.txt。",
+    "description": "修复 GregTech CEu Modern (GTM) 8.0.0-SNAPSHOT 的启动崩溃与 JEI 显示问题：启动 NPE、JEI 里格雷配方分类缺失、点开配方页崩溃、多方块 3D 结构图偏左上角、控制器「可使用的类型」菜单开出屏幕外（先减掉该行按钮的滚动位移再按屏幕上的真实位置重摆，放不下就翻到按钮上方；认不准就完全不动）。仅客户端生效；【配置】config/gtm_jei_startup_fix.toml（r32 新增，r34 扩成四组，注释中英双语）：[fixes] 五个修复各一个独立开关（默认全开）；[messages] joinChatReminder 控制进世界聊天提醒开/关；[logs] startupLogKeep 控制 gtm_jei_logs 保留几份启动日志（-1 = 一份都不删）+ writeStartupLog 建不建日志文件；[report] enabled 写不写现场报告——两个写开关关掉＝本次启动一个字节都不写。【命令】/gtmfix status｜reload｜report（看开关 / 改完立刻生效 / 拿报告路径，不需要作弊权限）。运行日志见游戏根目录 gtm_jei_fix_report.txt。",
     "version": "${mod_version}",
     "logoFile": "logo.png",
     "url": "",

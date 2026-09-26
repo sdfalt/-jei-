@@ -1,5 +1,6 @@
 package cn.blockforge.gtmjeifix.mixin;
 
+import cn.blockforge.gtmjeifix.FixConfig;
 import cn.blockforge.gtmjeifix.JeiReadiness;
 import cn.blockforge.gtmjeifix.LazyIcons;
 
@@ -47,6 +48,7 @@ public class CategoryIconJeiWrapperMixin {
             cancellable = true,
             remap = false)
     private static void gtmjeifix$deferTextureIcon(ResourceLocation location, CallbackInfoReturnable<Object> cir) {
+        if (!FixConfig.crashFixEnabled()) return;       // r34：开关关了 → 完全不拦，行为与没装本模组一致
         if (LazyIcons.isBypassed()) return;              // 自家恢复用的直调，放行
         if (JeiReadiness.isRuntimeStored()) return;      // JEI 已就绪，照常真建图标
         // 未就绪：原调用必定 NPE，取消它，给一个会自动恢复的占位图标（服务端/降级时为 null）
@@ -59,6 +61,7 @@ public class CategoryIconJeiWrapperMixin {
             cancellable = true,
             remap = false)
     private static void gtmjeifix$deferStackIcon(ItemStack stack, CallbackInfoReturnable<Object> cir) {
+        if (!FixConfig.crashFixEnabled()) return;       // r34：同上
         if (LazyIcons.isBypassed()) return;
         if (JeiReadiness.isRuntimeStored()) return;
         cir.setReturnValue(LazyIcons.create(stack));

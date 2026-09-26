@@ -116,11 +116,13 @@ final class ClientIconFixupPolling {
             player.displayClientMessage(Component.literal(head + "现场报告：游戏根目录 "
                     + FixReport.FILE_NAME + "；本次启动逐行日志："
                     + FixReport.logHint() + "（发回任意一份即可定位）"), false);
-            // r32：顺手告诉玩家这个开关在哪，省得他以为只能忍着看这几行
-            player.displayClientMessage(Component.literal(head + "这几行提示、以及启动日志留几份，"
-                    + "都能在游戏根目录 " + FixConfig.filePathHint() + " 里改"
-                    + "（不想看到这几行就把 joinChatReminder 改成 false；"
-                    + "日志份数改 startupLogKeep，-1 = 一份都不删）。注释是中英双语的。"), false);
+            // r32 起这两行讲配置；r34 配置扩到四组、又多了 /gtmfix，指路文案跟着更新
+            player.displayClientMessage(Component.literal(head + "这些设置都能在游戏根目录 "
+                    + FixConfig.filePathHint() + " 里改（注释中英双语）："
+                    + "[fixes] 五个修复各自开关、[messages] 这几行提示、"
+                    + "[logs] 日志份数与 writeStartupLog、[report] 要不要写报告。"
+                    + "改完保存后敲 /gtmfix reload 立刻生效，/gtmfix status 看现状，"
+                    + "/gtmfix report 拿报告文件路径（不需要作弊权限）。"), false);
             LOGGER.info("[gtm_jei_startup_fix] 聊天摘要已发送：{}", JeiDiagnostics.chatSummary());
         } catch (RuntimeException | LinkageError e) {
             LOGGER.debug("[gtm_jei_startup_fix] 发送聊天摘要失败（不影响游戏）：{}", e.toString());

@@ -255,6 +255,10 @@ public final class MenuKeepOnScreen {
      * 非菜单部件立刻返回。
      */
     public static void afterResize(Object resizeNode) {
+        // r34：独立开关。关掉后连 hookFired 都不置——状态行会明说「已按配置关闭」。
+        if (!FixConfig.menuKeepOnScreenEnabled()) {
+            return;
+        }
         if (disabled) {
             return;
         }
@@ -1200,6 +1204,9 @@ public final class MenuKeepOnScreen {
 
     /** 给现场报告 / 聊天摘要用的一行结论。 */
     public static String statusLine() {
+        if (!FixConfig.menuKeepOnScreenEnabled()) {
+            return "弹出菜单校正：已按配置关闭（fixes.enableMenuKeepOnScreen=false）";
+        }
         if (disabled) {
             return "弹出菜单校正：已停用" + (lastFailure == null ? ""
                     : "（" + lastFailure + "）") + "，菜单行为回到未打补丁的原样";

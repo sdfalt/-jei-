@@ -24,8 +24,14 @@ import java.util.stream.Stream;
  * 每次启动都会被<b>整份重写</b>——玩家想对比「上一次能进、这一次进不去」，
  * 或者一次启动崩在半路、第二次启动又把它盖掉了，现场就永远拿不到了。
  * 本类改成<b>只追加、不覆盖</b>：一次启动一个文件，文件名带启动时刻
- * （例：{@code gtm_jei_logs/startup-20260924-162009.log}），
- * 老文件全部原样留着（只保留最近 20 份，防止积几百个）。
+ * （例：{@code gtm_jei_logs/startup-20260924-162009.log}）。
+ *
+ * <p><b>r32：留几份由配置文件说了算</b>——以前这里写死 20 份，玩家没法改。
+ * 现在份数取自 {@link FixConfig#startupLogKeep()}（{@code config/gtm_jei_startup_fix.toml}
+ * 里的 {@code logs.startupLogKeep}）：填 40 就留最近 40 份，填 <b>-1 一份都不删</b>。
+ * 清理<b>不在建文件时做</b>，而是等配置真正读进来再做（{@link #onConfigReady(String)}）：
+ * NeoForge 的配置是在模组构造之后才加载的，构造时就按默认 20 清一遍的话，
+ * 玩家明明填了 40，多出来的那些也会被误删。
  *
  * <p><b>与根目录那份的关系</b>：内容完全一致——{@link FixReport#note(String)}
  * 的每行同时写两处。根目录那份适合「随手发最新现场」，
@@ -43,8 +49,8 @@ final class StartupLog {
     /** 文件夹名（游戏根目录下，与 {@code mods}、{@code logs} 同级）。 */
     static final String DIR_NAME = "gtm_jei_logs";
 
-    /** 最多留几份。超出时删最旧的，只动本模组自己创建的文件名。 */
-    private static final int KEEP = 20;
+    // r32：这里原来写死 private static final int KEEP = 20;
+    // 现在份数取自配置（FixConfig.startupLogKeep()，未读到配置时它返回默认 20），见 applyRetention()。
 
     private static final String PREFIX = "startup-";
     private static final String SUFFIX = ".log";
@@ -62,6 +68,8 @@ final class StartupLog {
     private static Path file;
     /** 只允许建立一次（重复调用 open 直接忽略）。 */
     private static boolean attempted = false;
+    /** 本次启动有没有按配置清过一次旧日志（只给「轮询兜底」那条路用，配置事件本身每次都跑）。 */
+    private static boolean retentionApplied = false;
 
     private StartupLog() {}
 
@@ -95,7 +103,11 @@ final class StartupLog {
                 }
                 writeRaw("----------------------------------------");
                 writer.flush();
-                prune(dir);
+                // r32：这里<b>不</b>清理旧日志。此刻配置文件还没加载（NeoForge 在模组构造之后才读配置），
+                // 拿默认值去删会误删玩家指定要保留的份数。改由 onConfigReady() 在配置到手后清一次。
+                if (FixConfig.isLoaded()) {
+                    applyRetention("建日志时配置已在手");
+                }
                 // 进程退出时（正常关游戏/崩溃后被 launcher 收尸）补一行收尾，标记这份日志到此为止
                 Runtime.getRuntime().addShutdownHook(
                         new Thread(() -> finish("=== 进程退出（游戏关闭或异常终止） ==="),
@@ -178,8 +190,10 @@ final class StartupLog {
         out.add("启动时刻：" + HUMAN.format(now));
         out.add("这份文件：" + DIR_NAME + "/" + actualFileName
                 + "　（游戏根目录 = " + safeGameDir() + "）");
-        out.add("保留最近 " + KEEP + " 份，更早的本模组自己删掉（只删 " + DIR_NAME + "/" + PREFIX
-                + "*.log，绝不动别的文件）。");
+        out.add("保留几份由配置决定：" + FixConfig.filePathHint()
+                + " 里的 logs.startupLogKeep（-1 = 一份都不删）；"
+                + "配置到手后会在这份日志里补一行「[日志保留] …」说明实际按几份在清。"
+                + "删的时候只动 " + DIR_NAME + "/" + PREFIX + "*.log，绝不动别的文件。");
         out.add("系统｜Java " + System.getProperty("java.version", "(未知)")
                 + " ｜ " + System.getProperty("os.name", "(未知)")
                 + " " + System.getProperty("os.version", "")
@@ -190,10 +204,17 @@ final class StartupLog {
         return out;
     }
 
-    /** 游戏根目录；拿不到（极端早期/异常环境）就用当前目录兜底。 */
+    /**
+     * 游戏根目录；拿不到（极端早期/异常环境）就用当前目录兜底。
+     *
+     * <p>注意要挡两种拿不到：<b>抛异常</b>，以及 <b>返回 {@code null}</b>——后者是 r32 拿成品 jar
+     * 离线跑清理逻辑时撞出来的（环境属性没喂给 FMLPaths 时 {@code GAMEDIR.get()} 不抛而是给 null），
+     * 只挡异常的话，下面那句 {@code resolve} 会直接 NPE，日志与清理就整个静默失效。
+     */
     private static Path gameDir() {
         try {
-            return FMLPaths.GAMEDIR.get();
+            Path p = FMLPaths.GAMEDIR.get();
+            return p == null ? Path.of(".") : p;
         } catch (RuntimeException | LinkageError e) {
             return Path.of(".");
         }
@@ -216,24 +237,126 @@ final class StartupLog {
         }
     }
 
-    /** 只保留最近 20 份；删不掉就算了，绝不影响游戏。 */
-    private static void prune(Path dir) {
-        try (Stream<Path> files = Files.list(dir)) {
-            List<Path> logs = new ArrayList<>();
+    /**
+     * 配置事件（加载完成 / 重新读取）回调：按配置里的份数清一次旧日志，并把结论写进这份日志。
+     *
+     * <p>为什么不在 {@link #open(List)} 里清：NeoForge 21.1 是「先构造模组、后加载配置」，
+     * 建日志那一刻还拿不到玩家的设置。详见 {@link FixConfig} 的类注释。
+     *
+     * @param reason 触发来源，只写进日志给人看（「配置加载完成」「配置已重新读取」「轮询兜底」…）
+     */
+    static void onConfigReady(String reason) {
+        synchronized (LOCK) {
+            if (!FixConfig.isLoaded()) return;   // 还没读到就什么都不做（宁可不删，也别删错）
+            applyRetention(reason);
+        }
+    }
+
+    /** 兜底：万一哪天配置事件没来（版本差异等），轮询里调一次；已经清过就直接返回。 */
+    static void ensureRetentionApplied() {
+        synchronized (LOCK) {
+            if (retentionApplied) return;
+            onConfigReady("轮询兜底");
+        }
+    }
+
+    /**
+     * 按配置清理旧日志。调用方持锁。
+     *
+     * <p>语义（与配置文件里的注释一字不差）：
+     * {@code -1} 或任何负数 = 一份都不删；{@code 0} = 只留本次这一份；
+     * {@code N} = 留最近 N 份。<b>本次正在写的这一份永远不参与删除</b>
+     * （否则填 0 就会把当场要用的文件删掉，Windows 上还会占用失败）。
+     */
+    private static void applyRetention(String reason) {
+        int keep = FixConfig.startupLogKeep();
+        int found;
+        int deleted;
+        if (keep < 0) {
+            found = countOurLogs();
+            deleted = 0;
+        } else {
+            int[] r = prune(keep);
+            found = r[0];
+            deleted = r[1];
+        }
+        retentionApplied = true;
+        String text = "[日志保留] " + reason + "：" + FixConfig.describe()
+                + "；" + DIR_NAME + " 里现有 " + found + " 份"
+                + (keep < 0 ? "，按配置一份都不删"
+                        : "，按「留 " + keep + " 份」删掉了 " + deleted + " 份更早的")
+                + "（只删 " + DIR_NAME + "/" + PREFIX + "*.log）。";
+        FixReport.note(text);   // 根目录那份与本次启动这份都拿到（note 内部回到 line，同一把锁可重入）
+        LOGGER.info("[gtm_jei_startup_fix] {}", text);
+    }
+
+    /** 数一下文件夹里有几份本模组的日志（数不动返回 -1，只影响措辞，不影响功能）。 */
+    private static int countOurLogs() {
+        try (Stream<Path> files = Files.list(gameDir().resolve(DIR_NAME))) {
+            int n = 0;
             for (Path p : (Iterable<Path>) files.filter(StartupLog::isOurLog)::iterator) {
-                logs.add(p);
+                n++;
+            }
+            return n;
+        } catch (Throwable t) {
+            return -1;
+        }
+    }
+
+    /**
+     * 只保留最近 {@code keep} 份（本次这份一定在内）。
+     *
+     * @return {@code {夹子里原有几份, 删掉了几个}}；数不出来时第一个元素是 -1
+     */
+    private static int[] prune(int keep) {
+        int deleted = 0;
+        try {
+            Path dir = gameDir().resolve(DIR_NAME);
+            List<Path> logs = new ArrayList<>();
+            try (Stream<Path> files = Files.list(dir)) {
+                for (Path p : (Iterable<Path>) files.filter(StartupLog::isOurLog)::iterator) {
+                    logs.add(p);
+                }
+            } catch (java.nio.file.NoSuchFileException noDir) {
+                return new int[] {0, 0};   // 文件夹还没有，等于一份都没有
             }
             // 文件名开头就是启动时刻，倒序排列 = 最新在前
             logs.sort(Comparator.reverseOrder());
-            for (int i = KEEP; i < logs.size(); i++) {
+            int kept = 0;
+            for (Path p : logs) {
+                if (isCurrentFile(p)) {
+                    kept++;          // 本次正在写的这份，永远算「保留」
+                    continue;
+                }
+                if (kept < keep) {
+                    kept++;
+                    continue;
+                }
                 try {
-                    Files.deleteIfExists(logs.get(i));
+                    Files.deleteIfExists(p);
+                    deleted++;
                 } catch (Throwable ignored) {
-                    // 删不动就留着，多几个文件不影响任何东西
+                    // 删不动（文件被编辑器打开着等）就留着，多几个文件不影响任何东西
                 }
             }
+            return new int[] {logs.size(), deleted};
         } catch (Throwable t) {
             LOGGER.debug("[gtm_jei_startup_fix] 清理旧启动日志时出错（可忽略）：{}", t.toString());
+            return new int[] {-1, deleted};
+        }
+    }
+
+    /** 是不是本次启动正在写的那一份（路径规范化后比较，拿不到就退化成文件名比较）。 */
+    private static boolean isCurrentFile(Path p) {
+        try {
+            if (file == null) return false;
+            return file.toAbsolutePath().normalize().equals(p.toAbsolutePath().normalize());
+        } catch (RuntimeException | LinkageError e) {
+            try {
+                return file != null && p.getFileName().equals(file.getFileName());
+            } catch (RuntimeException | LinkageError e2) {
+                return false;
+            }
         }
     }
 

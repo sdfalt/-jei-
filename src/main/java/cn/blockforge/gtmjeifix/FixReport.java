@@ -127,7 +127,11 @@ public final class FixReport {
     private static void flush() {
         if (fileDisabled) return;
         try {
-            Path file = FMLPaths.GAMEDIR.get().resolve(FILE_NAME);
+            Path file = reportFile();
+            if (file == null) {
+                fileDisabled = true;   // 拿不到游戏根目录（r32 实测：FMLPaths 可能直接给 null）
+                return;
+            }
             Files.write(file, text().getBytes(StandardCharsets.UTF_8));
         } catch (Throwable t) {
             fileDisabled = true;
@@ -136,11 +140,18 @@ public final class FixReport {
         }
     }
 
-    private static String pathOrNull() {
+    /** 根目录报告文件的完整路径；游戏根目录拿不到时返回 {@code null}（调用方负责降级）。 */
+    private static Path reportFile() {
         try {
-            return FMLPaths.GAMEDIR.get().resolve(FILE_NAME).toString();
+            Path gameDir = FMLPaths.GAMEDIR.get();
+            return gameDir == null ? null : gameDir.resolve(FILE_NAME);
         } catch (RuntimeException | LinkageError e) {
-            return "(未知)";
+            return null;
         }
+    }
+
+    private static String pathOrNull() {
+        Path f = reportFile();
+        return f == null ? "(未知)" : f.toString();
     }
 }

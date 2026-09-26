@@ -1,12 +1,13 @@
 package cn.blockforge.gtmjeifix;
 
 import com.mojang.logging.LogUtils;
+import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.loading.FMLEnvironment;
 import org.slf4j.Logger;
 
 /**
- * GTM (GregTech: CEu Modern) 8.0.0-SNAPSHOT 启动崩溃修复 —— r28。
+ * GTM (GregTech: CEu Modern) 8.0.0-SNAPSHOT 启动崩溃修复 —— r32。
  *
  * <p><b>崩溃链（原文报错 {@code Cannot invoke "mezz.jei.api.runtime.IJeiRuntime.getJeiHelpers()"
  * because the return of "...GTJEIPlugin.getRuntime()" is null}）</b>：
@@ -95,6 +96,13 @@ import org.slf4j.Logger;
  * 详见 {@link MenuKeepOnScreen} 的注释（{@code rx/ry} 在一拍里会被 {@code preApplyPos} 与
  * {@code applyPos} 换两种含义，而 {@code resize()} 只由模组侧触发才重算）。
  *
+ * <p><b>r32 新增：配置文件</b>——游戏根目录 {@code config/gtm_jei_startup_fix.toml}
+ * （第一次启动自动生成，注释中英双语），管两件事：
+ * ① {@code messages.joinChatReminder} 控制<b>每次进入游戏时聊天栏弹出的那几行提醒</b>发不发；
+ * ② {@code logs.startupLogKeep} 控制 {@code gtm_jei_logs/} 里<b>保留几份启动日志</b>
+ * （填 40 就只留最近 40 份、更早的自动删；填 {@code -1} 表示一份都不删）。
+ * 详见 {@link FixConfig}（含「NeoForge 在模组构造之后才加载配置」这个必须绕开的时序坑）。
+ *
  * <p>任何一步结构对不上都只降级、不崩溃。对 GTM 全程按字符串类名反射访问；
  * 对 JEI 用官方 api jar 作 compileOnly 依赖，成品 jar 不打包它们。
  *
@@ -109,7 +117,9 @@ import org.slf4j.Logger;
  * 『可使用的类型』菜单越靠下、甚至看不见」）；
  * r31 按格雷与 ModularUI 两边源码取证，给这条补上一直缺的那个「滚动位移」，
  * 并删掉贴屏幕边的兜底与一条目标类不存在的死挂钩（r28/r30 的「菜单钉死一处」
- * 「调窗口后顶到左上角」都出自这两处）。
+ * 「调窗口后顶到左上角」都出自这两处）；
+ * r32 加配置文件 config/gtm_jei_startup_fix.toml（进世界聊天提醒开关 + 启动日志保留份数，
+ * -1 = 不删；注释中英双语），并把写死 20 份的清理改成按配置清理。
  */
 @Mod(GtmJeiStartupFix.MOD_ID)
 public final class GtmJeiStartupFix {
@@ -118,19 +128,34 @@ public final class GtmJeiStartupFix {
 
     private static final Logger LOGGER = LogUtils.getLogger();
 
-    public GtmJeiStartupFix() {
+    public GtmJeiStartupFix(IEventBus modEventBus) {
+        // r32：第一件事就是注册配置文件（游戏根目录 config/ + FixConfig.FILE_NAME）。
+        // 此刻 NeoForge 还没把文件读进来（它在模组构造之后才加载配置），所以这里只是登记，
+        // 真正按配置清理旧日志的动作挂在 FixConfig 注册的 ModConfigEvent 上。
+        FixConfig.register(modEventBus);
         FixReport.start(FixReport.modVersion(MOD_ID));
         LOGGER.info("[gtm_jei_startup_fix] 已加载（{}）：修启动崩溃 + 补格雷配方分类 + 现场报告。"
                 + "每一步干没干活都会实时写进游戏根目录的 "
                 + FixReport.FILE_NAME + "，并且同步写一份到本次启动专属的 "
                 + FixReport.logHint() + "（每次启动一份、不覆盖上一次，"
-                + "完整路径 " + FixReport.logPath() + "）；进世界后聊天栏还会自动打两三行结论。"
+                + "完整路径 " + FixReport.logPath() + "）；进世界后聊天栏还会自动打两三行结论"
+                + "（不想看这几行、或想改「启动日志留几份」，都在游戏根目录 "
+                + FixConfig.filePathHint() + " 里改，注释中英双语）。"
                 + "如果还是「没效果」，把那份文件的内容发回来就能直接定位卡在哪一步。"
                 + "（编译期 JEI api 与实装同版本 19.56.0.441，接口逐字节核对无变化。）",
                 FixReport.selfTag());
         FixReport.note("[已加载]（NeoForge " + FixReport.modVersion("neoforge")
                 + "，JEI " + FixReport.modVersion("jei")
                 + "，gtceu " + FixReport.modVersion("gtceu") + "）");
+        FixReport.note("[配置] 本模组的设置文件：游戏根目录 " + FixConfig.filePathHint()
+                + "（第一次启动由游戏自动生成，删了下次还会重新生成）。管两件事："
+                + "① messages.joinChatReminder（默认 " + FixConfig.DEFAULT_CHAT_REMINDER
+                + "）= 每次进入游戏时聊天栏那几行提醒发不发；"
+                + "② logs.startupLogKeep（默认 " + FixConfig.DEFAULT_LOG_KEEP
+                + "，填 -1 = 一份都不删）= " + StartupLog.DIR_NAME
+                + " 里保留几份启动日志，超出的旧份自动删除。注释中英双语。"
+                + "此刻 NeoForge 还没读这个文件（它在本模组构造之后才加载配置），"
+                + "读到后会在这份日志里再记一行「[日志保留] …」。");
         FixReport.note("[兼容补丁] r17 的「RecipeSlot 字段补丁」已就位：第一次打开配方页时才生效，"
                 + "生效时会在这份日志里记一条「已为 ModularUI 补回字段」；没记就是没触发（老 JEI 或没装 ModularUI）。");
         FixReport.note("[多方块预览校正] r24 的位置补丁已就位（客户端）：打开 JEI 的格雷多方块结构页时生效，"

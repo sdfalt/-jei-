@@ -1,4 +1,4 @@
-# GTM JEI Startup Crash Fix（r31）
+# GTM JEI Startup Crash Fix（r32）
 
 装了这个模组，**GregTech CEu Modern（GTM）8.0.0-SNAPSHOT 在 Minecraft 1.21.1 / NeoForge 上就不会在启动时崩溃，JEI 里也能重新看到格雷配方分类，点开配方页（如搅拌机）也不再必崩**（r17 修复，见版本历程）。本模组只在客户端生效。
 
@@ -11,14 +11,17 @@
 | GregTech CEu Modern（`gtceu`） | 8.0.0-SNAPSHOT |
 | JEI | 19.x（实测 `19.56.0.441` 与 `19.57.0.448`；r17 起 ModularUI 不兼容崩溃也已修复） |
 
-本模组版本 `1.0.0-r31`，mod id `gtm_jei_startup_fix`，成品是 `build/libs/gtm_jei_startup_fix-1.0.0-r31.jar`。
+本模组版本 `1.0.0-r32`，mod id `gtm_jei_startup_fix`，成品是 `build/libs/gtm_jei_startup_fix-1.0.0-r32.jar`。
 
-r31 只重写**「弹出菜单不出屏」这一项**（r28 贴屏幕边、r30 按按钮摆，两版都被玩家反映「没修好／还把菜单
-钉死到一处」）：这次拿格雷与 ModularUI 两边源码取到了真凭据——**那份缺失部件列表是可滚动的，而滚动
-从不写进子部件坐标**，菜单照的是一份「没滚动」的位置，r28/r30 少的就是这一个量。现在先把这一行按钮的
-滚动位移减掉再摆；同时删掉「实在放不下就往屏幕边贴」的兜底（「顶到左上角」就是这么来的）和一条目标类
-根本不存在的死挂钩。其余四项修复的代码一字未改（只把 r24 那条「读数不像屏幕坐标就不校正」的判据
-加了现场取证，见「已知边界」）。
+r32 只做一件事：**加了一个配置文件**，把两件原本写死的行为交给玩家控制（注释中英双语，见下面
+「配置文件」一节）：① 每次进入游戏时聊天栏弹的那几行提醒可以整体关掉；② `gtm_jei_logs/` 里
+保留几份启动日志——以前固定 20 份，现在填几份是几份，填 `-1` 就一份都不删。
+r31 及以前的五项修复，这一版代码一字未动。
+
+（r31 那一版重写的是**「弹出菜单不出屏」**：拿格雷与 ModularUI 两边源码取到真凭据——那份缺失部件
+列表是可滚动的，而滚动从不写进子部件坐标，菜单照的是一份「没滚动」的位置，r28/r30 少的就是这一个量；
+同时删掉「实在放不下就往屏幕边贴」的兜底（「顶到左上角」就是这么来的）和一条目标类根本不存在的死挂钩。
+详见「问题四」。r24/r28/r30/r31 那几项几何逻辑这一版都没再动。）
 
 先解释几个名词（后面还会用到）：
 
@@ -203,7 +206,7 @@ r31 把 r28/r30 那条「实在放不下就往屏幕边贴」的兜底**整条�
 
 ## 安装
 
-1. 把 `build/libs/gtm_jei_startup_fix-1.0.0-r31.jar` 放进 `mods` 文件夹。
+1. 把 `build/libs/gtm_jei_startup_fix-1.0.0-r32.jar` 放进 `mods` 文件夹。
 2. **删掉所有旧的同名 jar**（r1 ~ r30，尤其是 r28/r30 那两份带弹出菜单摆法的）：多个版本会同时打补丁，行为不确定。
 
 本模组把 `gtceu` 与 `jei` 声明为必需依赖（`neoforge.mods.toml`）：缺任意一个都没有可打补丁的目标。
@@ -224,6 +227,78 @@ r31 把 r28/r30 那条「实在放不下就往屏幕边贴」的兜底**整条�
 版本（`FixReport.selfTag()` 也是从模组元数据现读）永远和 jar 文件名一致。
 `description` 则是四份各写各的，改完记得四份一起过一遍（r29 就是补这一课）。
 
+## 配置文件（r32 新增）
+
+第一次进游戏之后，游戏根目录会出现 **`config/gtm_jei_startup_fix.toml`**（和 `mods` 文件夹同级的
+`config` 里）。它由 NeoForge 自带的配置系统自动生成，**每个选项上面的注释都是中英双语**，
+直接用记事本改就行。里面管两件事：
+
+| 选项 | 默认 | 管什么 |
+| --- | --- | --- |
+| `messages.joinChatReminder` | `true` | **每次进入游戏时聊天栏弹的那几行提醒**发不发。填 `false` 就一个字都不发 |
+| `logs.startupLogKeep` | `20` | **`gtm_jei_logs/` 里保留几份启动日志**。填 40 就只留最近 40 份、更早的自动删掉；填 `-1` 表示**一份都不删** |
+
+生成出来的文件**逐字**长这样（下面这份是拿成品 jar 真跑一遍 `ModConfigSpec` 打出来的，不是手抄的近似值；
+注释由模组写进去，玩家只管改等号后面那个值）：
+
+```toml
+[messages]
+	#提示消息 / Reminder messages
+	#本模组在聊天栏里主动打给你的那几行字。
+	#The lines this mod prints into chat by itself.
+	#每次进入游戏（单机世界、服务器）后，要不要在聊天栏弹出本模组的提醒消息。
+	#Whether to show this mod's reminder messages in chat after you join a world or server.
+	#
+	#true  = 弹提醒（默认，方便确认模组有没有干活、卡在哪一步）。
+	#false = 完全不弹，聊天栏干干净净；现场报告和逐行日志照样写，不影响排查问题。
+	#true  = show them (default; handy to confirm the fix is doing its job).
+	#false = stay silent; the report file and the per-startup log are still written.
+	#
+	#改完保存即可生效（重新进一次世界就会按新设置走）。
+	#Save the file and it applies - the next world you join uses the new value.
+	joinChatReminder = true
+
+[logs]
+	#日志 / Logs
+	#游戏根目录 gtm_jei_logs 文件夹里「每次启动一份」的日志。
+	#Per-launch log files inside the gtm_jei_logs folder of your game directory.
+	#保留最近多少份启动日志。填 40 就只留最近 40 份，超过的旧文件由本模组自动删掉。
+	#How many startup log files to keep. 40 = keep the 40 newest and delete older ones automatically.
+	#
+	#-1 = 一份都不删，全部保留（想留多少留多少，代价是文件夹会一直变大）。
+	#0  = 只保留本次启动这一份。
+	#正整数 N = 保留最近 N 份（本次这份一定在内，绝不会被自己删掉）。
+	#-1 = never delete anything, keep every log file (the folder just keeps growing).
+	#0  = keep only the log of this launch.
+	#Any positive N = keep the N newest files; the file of this launch is always counted as kept.
+	#
+	#只删本模组自己生成的 gtm_jei_logs/startup-*.log，别的文件一个字节都不碰。
+	#Only gtm_jei_logs/startup-*.log files created by this mod are ever deleted; nothing else is touched.
+	#
+	#改完保存后：本模组会立刻按新份数再清一次（不用重启游戏）。
+	#After you change this, the mod prunes the folder again right away - no restart needed.
+	# Default: 20
+	# Range: -1 ~ 10000
+	startupLogKeep = 20
+```
+
+
+几点要说清楚的：
+
+- **关掉聊天提醒不损失任何排查能力**：`gtm_jei_fix_report.txt`、`gtm_jei_logs/` 那份逐行日志、
+  游戏日志全都照写；报告里还会多一行 `[进世界提示] 已按配置关闭…`，用来证明这个开关确实读到了。
+- **份数改完不用重启**：配置被重新读到时会自动再清一次，并在本次启动日志里记一行
+  `[日志保留] 配置已重新读取：… 现有 N 份，按「留 M 份」删掉了 K 份更早的`。
+- **本次正在写的这一份永远不会被删**（所以 `0` 的含义是「只留这一次」，不是「删光」）。
+- 填错会被游戏自动纠正：类型不对/超出范围 → 回到合法值，并在文件里留一行说明，不会因此崩。
+- 删掉这个文件不影响任何东西，下次启动自动生成默认值。
+
+**为什么清理旧日志不在「建日志文件」那一刻做**（这是个真坑，改回去就会误删）：NeoForge 21.1 的
+加载顺序是「构造模组 → 加载配置 → 注册 → CommonSetup」，构造函数里配置**还没读到**，
+`ConfigValue#get()` 甚至直接抛 `IllegalStateException: Cannot get config value before config is loaded.`
+（用 21.1.244 真 jar 跑过确认）。所以 r32 的做法是：取值一律走 `FixConfig` 的兜底方法（未加载时返回默认），
+清理动作挂在 `ModConfigEvent.Loading/Reloading` 上。否则玩家把 20 改成 40，启动瞬间会先按 20 删掉一批——越改越少。
+
 ## 启动日志在哪（r16 起）
 
 游戏根目录（就是 `mods` 文件夹所在那一层）里会有**两处**现场记录：
@@ -239,7 +314,7 @@ r31 把 r28/r30 那条「实在放不下就往屏幕边贴」的兜底**整条�
 - **每行前面带 `HH:mm:ss.SSS` 时间戳**，能看出「挂钩命中」和「补分类」之间隔了几秒、卡在哪一步之后就再没有下文。
 - **文件头**记录启动时刻、游戏目录绝对路径、Java 版本、操作系统与架构、最大堆、运行侧（客户端/专用服务端）＋各模组版本；**文件尾**由 JVM 关闭钩子补一行「进程退出」，所以文件停在哪儿就说明现场到哪儿为止。
 - **行到即落盘**（写完立刻 flush）：崩溃、强杀、手机启动器直接关掉，已经发生的那几行都还在。
-- **只保留最近 20 份**，超出的自动删最旧——且只删自己创建的 `gtm_jei_logs/startup-*.log`，绝不碰别的文件。
+- **保留几份由配置文件决定**（r32 起，见上面「配置文件」一节）：默认与以前一样留最近 20 份，超出的自动删最旧——且只删自己创建的 `gtm_jei_logs/startup-*.log`，绝不碰别的文件；填 `-1` 就一份都不删，填 40 就留 40 份。**本次正在写的这一份永远不参与删除。**
 - 两边内容一致，写不进去时（目录只读等）自动只保留根目录那份与聊天摘要，不影响游戏。
 
 反馈问题时发哪份：默认发**最新那份**（两份任选其一，内容一样）。要说「上次能进、这次进不去」，就把 `gtm_jei_logs/` 里**前后两次启动**的两份一起发。
@@ -283,7 +358,7 @@ r31 把 r28/r30 那条「实在放不下就往屏幕边贴」的兜底**整条�
 | r13 | 用与用户同一构建的 GTM 官方 sources jar + JEI 19.56 实现字节码钉死根因：**GTM 这两个方法的方法体运行期中途抛异常，永远走不到结尾**（快照自己注释掉了主分类注册 → 分类缺失又让配方阶段第一句就抛「Recipe type not registered」→ JEI 19.56 的 `PluginCaller` 把插件的 RuntimeException 吞掉只记日志）。修法：`registerCategories/registerRecipes` 改在 **HEAD 接管**——`ci.cancel()` 后由本模组按 GTM 原顺序重放（6 个特殊分类逐个带配置守卫构造注册、主配方分类挂页、配方逐分类代交、程序电路内联补上），每步独立 try/catch，成败与真实异常逐条写进现场报告；兜底分类页补槽位底、动画箭头、耗时/EU·t 文本（治「页面变暗」「箭头没有」）；修诊断抢跑（注册流程没跑完前不许下「挂钩未命中」结论） | — |
 | r14 | 适配 GTM 快照 17e1700：官方已自行恢复主分类注册，接管时**优先放行格雷原生页面类**，构造失败（老快照是抽象类）才退回本模组兜底页——新老快照都拿最优表现；程序电路页两种形态兼容；报告新增「格雷原生 X 页 + 本模组兜底 Y 页」账目 | 当前支持 34f02a6 与 17e1700 两个快照 |
 | r15 | NeoForge 依赖下界与编译版本解耦（`gradle.properties` 新增 `neo_version_range`），运行要求从 `[21.1.244,)` 放宽到 **`[21.1.235,)`**：本模组用到的全部 NF 接口在 21.1.x 全系列零变化，放宽无兼容风险 | — |
-| r16 | **每次启动留一份独立日志**：游戏根目录新建 `gtm_jei_logs/`，一次启动一个文件（`startup-yyyyMMdd-HHmmss.log`，同秒重开自动加 `-2` 后缀，绝不覆盖），逐行带 `HH:mm:ss.SSS` 时间戳、行到即落盘；文件头写启动时刻/Java/系统/最大堆/运行侧，尾部由关闭钩子补「进程退出」一行；只保留最近 20 份（仅删本模组自己的 `startup-*.log`）。根目录 `gtm_jei_fix_report.txt` 照旧保留为「最新一份」 | — |
+| r16 | **每次启动留一份独立日志**：游戏根目录新建 `gtm_jei_logs/`，一次启动一个文件（`startup-yyyyMMdd-HHmmss.log`，同秒重开自动加 `-2` 后缀，绝不覆盖），逐行带 `HH:mm:ss.SSS` 时间戳、行到即落盘；文件头写启动时刻/Java/系统/最大堆/运行侧，尾部由关闭钩子补「进程退出」一行；只保留最近 20 份（仅删本模组自己的 `startup-*.log`；这个 20 从 r32 起变成配置项 `logs.startupLogKeep`，默认值仍是 20）。根目录 `gtm_jei_fix_report.txt` 照旧保留为「最新一份」 | — |
 | r17 | **修「一点开配方页就崩」**：崩溃根因不在格雷也不在 JEI 本体——ModularUI 3.3.1 是对着 JEI 19.25 编译的，它的 `RecipeSlotAccessor` 按名字往 `RecipeSlot.allIngredients / displayIngredients` 两个 List 字段写数据；JEI 19.3x 起重构掉了这两个字段（用 modmaven 的 19.25/19.27/19.56/19.57 真 jar 逐版 javap 核对），`@Accessor` 定位失败在 sponge-mixin 里是硬错误 → `MixinApplyError` 崩游戏。本模组用独立 mixin 配置（`gtm_jei_startup_fix_jeicompat.mixins.json`，**priority 900：Mixin 自然顺序是数字小的先应用**——反编译 NeoForge 实用的 sponge-mixin 0.15.2 字节码 + 官方 `@Mixin` javadoc 双重核实，别凭直觉写更大的数；且查实单写配置 `priority` 不会传进 `MixinInfo.readPriority`，必须同时配 `mixinPriority`/注解 `priority`）+ 插件 `preApply`，在 `RecipeSlot` 类转换的最早时机用 ASM 把缺字段补回去；老 JEI（字段还在）原样跳过，没装 ModularUI 不补，任何异常只记日志不抛出。**教训**：sponge-mixin 分阶段应用——所有 mixin 的 `preApply` 先整体跑完，`@Accessor` 的字段定位在最后 ACCESSORS 阶段且读实时 `ClassNode`，所以补字段必然赶得上 | — |
 | r18–r20 | 启动器封面一揽子：jar 根目录放 `logo.png` 并把 `logoFile` 指到它（游戏内 Mods 列表与各启动器都读得到）；额外写一份**无注释、无多行字符串**的 `META-INF/mods.toml` 兼容副本给只认旧文件名的 HMCL（已反汇编 FML 4.0.43 确认它不会因此把本模组判成 Forge 模组）；再补一份 `mcmod.info` 给 PCL2 社区版（官方 PCL2 根本不打开 jar，只按 sha1 联网配图，这一点已如实告知用户） | 启动器里能看到封面 |
 | r24 | **修「JEI 里格雷的多方块 3D 结构图偏左上角」**：先按「JEI 把页面居中」的猜想用常量近似位移，用户实测仍有残留；改回按现场取值——从 `GuiGraphics` 位姿直接读出这块内嵌界面在屏幕上的真实原点，加到 MUI 设 GL 视口的入参上。**教训**：几何错位这种问题，拿常量去凑＝把「我算出的值」当成「游戏里真正用的值」，游戏分辨率一改变量就全变；凡是在绘制现场，就读现场的值（位姿、视口、窗口尺寸），不要猜常量 | — |
@@ -292,6 +367,7 @@ r31 把 r28/r30 那条「实在放不下就往屏幕边贴」的兜底**整条�
 
 | r30 | **重写「弹出菜单不出屏」的摆法**（两条 mixin 的挂钩位置一字未动）：r28 的规则是「越出可视区哪条边就往回挪多少」，落点只由「可视区远端 - 菜单高」决定 → 底部那一行的菜单顶边从 y=362 被挪到 y=309，**离自己那一行 37 像素，而且越界 1 像素和 200 像素都落到同一个位置**，玩家反映「越往下的行越是固定飘到一处」。r30 改成按**那一行的按钮**摆：从 `menu.resizer().getParent().getArea()` 拿按钮矩形（MUI 里 `relative(按钮)` 就是 `setParentOverride(按钮的节点)`），竖向四个候选位、横向两个——原样放得下就一个字节不动，放不下就翻到按钮另一侧（往上开），现场与候选位的差当作模组自己的 offset 保留。同时**改成写绝对值**（`y = 目标`、`ry = 目标 - 部件父.y`）：查清 MUI 的 `Area.applyPos` 用「排版父」把 `ry` 换算成 `y`，`StandardResizer.applyPos` 紧接着又把 `ry` 改写成「部件父」的相对值，而 `InternalWidgetTree.resize` 里 `isSelfFullyCalculated() \|\| resize(...)` 会让已算过的节点跳过规格重算——于是我们加进 `ry` 的位移会被下一次排版当成规格读走再推一遍；r28 看着稳定只是因为「贴边位恰好是那个反馈的不动点」。认不出朝向（`openCustom()` 自摆、父节点是整块面板）时退回 r28 的越界回挪，最坏情况与上一版一字不差；`resizer()/getParent()/getParentArea()` 也改成取不到只是不用这个能力，不再让 `Class.forName` 抛出去把整块校正停掉。**教训**：① 修「越界」不能只看落点在不在界内，还要看它**还属不属于原来那个控件**——脱离锚点的位置照样是 bug；② 往别人的排版字段里「加位移」之前，得先确认这个字段在下一个周期会不会被它自己当成规格值读回去，否则改的是反馈量不是位置 | — |
 | r31 | **第二次重写「弹出菜单不出屏」**，并且第一次拿到两边的源码级凭据（格雷 `GregTechCEu/GregTech-Modern` 分支 `1.21`＝用户那个 `17e1700` 构建；ModularUI `brachy84/ModularUI-Modern` 分支 `1.21.1`＝`3.3.1-SNAPSHOT`）：缺失部件列表是一个 **130 高的可滚动 `ListWidget`**，而 `AbstractScrollWidget.transformChildren` 只做 `stack.translate(-scrollX, -scrollY)`，**滚动永远不写进子部件的绝对坐标**，菜单又正是照那份没滚动的坐标摆的 —— r28/r30 少的都是这一个量，所以两版都把菜单钉死在屏幕边同一个位置（r30 日志 8 条「比可视区高,尽量贴行」→ y=196），窗口小一点还会退回「可视区近端」= 玩家说的**顶到左上角**。r31：① 沿父链累加可滚动部件的 `getScrollX/getScrollY`（菜单自己那条链也累加一次再**相减**，共同父辈自动抵消）算出按钮**在屏幕上真正**的矩形；② 锚点改用类型判据（必须是 `AbstractMenuButton` 的实例，不再用「宽≥600 或高≥400」这种绝对像素阈值——小窗口里面板都比这阈值小）；③ 只承认「窗口本身那张屏」（读 MUI 自己的 `UIType.isScreen`，读不到才退回尺寸比对），JEI 里的内嵌虚拟屏一概不动；④ **删掉「往屏幕边贴」的兜底**，认不准就一个字节不改；⑤ 删掉目标类 `brachy.modularui.widget.WidgetNode` 的第二条挂钩（该版本 525 个 java 文件里查无此类，从 r28 到 r30 一次都没命中）。另给 r24 那条「读数不像屏幕坐标就不校正」的判据加上现场取证（最多 3 条，带当时的窗口尺寸）。**教训**：见「问题四」末尾三条 | — |
+| r32 | **新增配置文件 `config/gtm_jei_startup_fix.toml`（注释中英双语）**，把玩家提的两件事变成可设置：① `messages.joinChatReminder` = 每次进入游戏时聊天栏弹的那几行提醒发不发（默认 true；关掉只影响聊天栏，报告与两份日志照写）；② `logs.startupLogKeep` = `gtm_jei_logs/` 保留几份启动日志（默认 20，也就是 r16～r31 一直写死的那个值；填 40 留 40 份，**填 -1 一份都不删**；本次正在写的这一份永远不参与删除）。用 NeoForge 自带的 `ModConfigSpec`（`net.neoforged.neoforge.common.ModConfigSpec`）而非自己解析文本：文件由游戏自动生成、注释由 `comment(...)` 写进 TOML、填错类型/超范围会被自动纠正而不是崩。**踩到并绕开的真坑**：NeoForge 21.1 的加载顺序是「构造模组 → 加载配置 → 注册 → CommonSetup」（反汇编 `net.neoforged.neoforge.internal.CommonModLoader` 看到 `loadConfigs(CLIENT)`/`loadConfigs(COMMON)` 在 `load()` 阶段），也就是**构造函数里配置还没读**，此时 `ConfigValue#get()` 直接抛 `IllegalStateException: Cannot get config value before config is loaded.`（用 21.1.244 真 jar 实测）。所以：取值全部走带兜底的方法（未加载返回默认），清理旧日志从「建日志文件时」改到 `ModConfigEvent.Loading/Reloading` 回调里做——否则玩家把 20 改成 40，启动瞬间会先按默认 20 删掉一批，越改越少；另外再留一条轮询兜底，防哪天事件不来。`ModConfigEvent` 是 `IModBusEvent`，只能站在模组总线上收（反汇编 `ModConfig#setConfig` 确认它走 `ModContainer.acceptEvent`），故 `@Mod` 构造函数改为注入 `IEventBus` | 只加配置与两处开关接线；五项修复的几何/注册逻辑一字未动 |
 
 这几段经验一句话总结：**Mixin 的错要分成三种——「方法没匹配上」（可以 `require = 0` 降级成「这项不补」）、「类转换时解析不到类名」（整个模组加载失败，`require = 0` 毫无用处），以及 r12 学到的最阴险的一种：「挂钩钉对了，但目标方法体半路抛异常，TAIL 永远执行不到」——JEI 把插件异常吞掉记日志，表面上什么都不发生。要接管一个不可靠的方法，就得站在它进门口（HEAD）取消原方法自己重放，而不是等它走到出口（TAIL）。**
 

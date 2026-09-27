@@ -9,7 +9,7 @@ import net.neoforged.neoforge.common.NeoForge;
 import org.slf4j.Logger;
 
 /**
- * GTM (GregTech: CEu Modern) 8.0.0-SNAPSHOT 启动崩溃修复 —— r38。
+ * GTM (GregTech: CEu Modern) 8.0.0-SNAPSHOT 启动崩溃修复 —— r39。
  *
  * <p><b>崩溃链（原文报错 {@code Cannot invoke "mezz.jei.api.runtime.IJeiRuntime.getJeiHelpers()"
  * because the return of "...GTJEIPlugin.getRuntime()" is null}）</b>：
@@ -164,6 +164,11 @@ import org.slf4j.Logger;
  * 默认/边界处理，现在包一层 spec 在纠正前用游戏自己的判据审一遍原文，
  * 「这一项看不懂，本次按默认 X 走」逐条写进日志、报告、聊天栏与 status；
  * 键名拼错与「整份文件语法坏掉被重建」这两种最坑的情况也各有专句。
+ * r39 适配 GTM 快照 01bda09（maven build 96；修复逻辑一字未动）：拿用户实装同一份 jar
+ * 全量 javap 复核七条挂钩与全部反射钉点——签名逐字节一致，CategoryIcon 抢跑
+ * {@code getRuntime()} 的崩溃链原样存在，五项修复一个都不能少；顺带取得格雷内嵌的
+ * ModularUI 3.3.1-SNAPSHOT 字节码，muicompat 三条挂钩的证据等级由「源码」升为「javap
+ * 确证」（真值存档与核对过程见 tools/ground-truth/）。
  */
 @Mod(GtmJeiStartupFix.MOD_ID)
 public final class GtmJeiStartupFix {

@@ -50,7 +50,8 @@ import org.slf4j.Logger;
  *     里 {@code mod_version = 3.3.1}，与用户实装同版本）：{@code EmbedHandler}、
  *     {@code ModularScreen.createEmbed}、{@code ModularUIJeiCategory.UIWrapperWidget}、
  *     {@code drawable/schema/BaseSchemaRenderer}、{@code drawable/schema/Viewport}；</li>
- * <li>GTM 8.0.0-SNAPSHOT 官方 sources jar（build 95）：{@code MultiblockInfoJeiCategory}
+ * <li>GTM 8.0.0-SNAPSHOT 官方 sources jar（build 95；r39 用 build 96 / {@code +01bda09}
+ *     复核，本节引用的文件在 95→96 官方 diff 之外，一字未变）：{@code MultiblockInfoJeiCategory}
  *     构造 {@code new MultiblockPreviewWidget(v, null, 200, 180)} 与 {@code getMaxWidth/getMaxHeight}；</li>
  * <li>JEI 19.56.0.441 官方 sources jar：{@code mezz/jei/common/gui/} 下的位姿平移＋相对鼠标约定。</li>
  * </ul>

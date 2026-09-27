@@ -55,6 +55,10 @@ import java.util.function.Function;
  *     GTM 现在交 {@code new Object()} 当那条"配方"；</li>
  * <li>6 个特殊分类的构造器 {@code (IJeiHelpers)} 与静态 {@code registerRecipes} 都没变。</li>
  * </ul>
+ * <p><b>r39 复核（快照 {@code 01bda09} / maven build 96）</b>：上面四条对 01bda09 依旧成立——
+ * {@code GTJEIPlugin} 四方法、原生构造器、{@code TYPES}/{@code machineType}、六个特殊分类与
+ * 程序电路页形态全部按 01bda09 的字节码逐条 javap 复核过（存档见
+ * {@code tools/ground-truth/gtceu-8.0.0-snapshot.javap.txt}），本类无需任何改动。
  * <p>所以 r14 在分类阶段先试 GTM 自己的 {@code GTRecipeJEICategory(helpers, category)}：
  * 构造并注册成功就用<b>格雷原生页</b>（老快照上该类是 abstract，试一下必然失败，自动退回兜底页）；
  * 单个分类失败只影响该分类。程序电路页两种快照形态都能交。

@@ -1,4 +1,4 @@
-# GTM JEI Startup Crash Fix（r38）
+# GTM JEI Startup Crash Fix（r39）
 
 装了这个模组，**GregTech CEu Modern（GTM）8.0.0-SNAPSHOT 在 Minecraft 1.21.1 / NeoForge 上就不会在启动时崩溃，JEI 里也能重新看到格雷配方分类，点开配方页（如搅拌机）也不再必崩**（r17 修复，见版本历程）。本模组只在客户端生效。
 
@@ -8,10 +8,19 @@
 | --- | --- |
 | Minecraft | 1.21.1 |
 | NeoForge | 21.1.x；依赖下界声明为 **21.1.235**（编译与实测在 21.1.244 / 251） |
-| GregTech CEu Modern（`gtceu`） | 8.0.0-SNAPSHOT |
+| GregTech CEu Modern（`gtceu`） | 8.0.0-SNAPSHOT（r39 起按**最新快照 `+01bda09`（maven build 96）**逐条字节码复核；`34f02a6`→`17e1700`→…→`01bda09` 全链兼容） |
 | JEI | 19.x（实测 `19.56.0.441` 与 `19.57.0.448`；r17 起 ModularUI 不兼容崩溃也已修复） |
 
-本模组版本 `1.0.0-r38`，mod id `gtm_jei_startup_fix`，成品是 `build/libs/gtm_jei_startup_fix-1.0.0-r38.jar`。
+本模组版本 `1.0.0-r39`，mod id `gtm_jei_startup_fix`，成品是 `build/libs/gtm_jei_startup_fix-1.0.0-r39.jar`。
+
+r39 只做一件事：**适配格雷最新快照 `+01bda09`（maven build 96）**，五项修复与 r38 的所有能力一字未动。
+拿与用户实装同一份 jar 全量 `javap`，把七条 mixin 挂钩与全部反射钉点逐条复核——签名零漂移；
+build 95→96 官方源码 diff 只有 5 个文件（AE2 存储总线 ×3、Jade 提示 ×2），和本模组的接触面零交集；
+`CategoryIcon` 抢跑 `GTJEIPlugin.getRuntime()` 的启动崩溃链在 01bda09 里**原样存在**，一个修复都不能少。
+额外收获：这次把格雷 jar 内嵌的 `modularui-mc1.21.1-3.3.1-SNAPSHOT.jar` 的字节码也拿到了本地，
+muicompat 三条界面校正的证据等级由「官方仓库源码」升为「运行时同一份字节码 javap 确证」
+（真值存档 `tools/ground-truth/gtceu-8.0.0-snapshot.javap.txt`、
+`tools/ground-truth/modularui-nested-in-gtceu-01bda09.javap.txt`）。
 
 r38 新增**配置防呆**（`ConfigGuard`），修复本体依旧一字未动：手改 toml 把某项填坏（`abc`、带引号的 `"40"`、
 `4.5`、超范围、键名拼错、整份语法写坏）时，NeoForge 原本全是静默处理——悄悄回默认、悄悄夹边界
@@ -232,7 +241,7 @@ r31 把 r28/r30 那条「实在放不下就往屏幕边贴」的兜底**整条�
 
 ## 安装
 
-1. 把 `build/libs/gtm_jei_startup_fix-1.0.0-r38.jar` 放进 `mods` 文件夹。
+1. 把 `build/libs/gtm_jei_startup_fix-1.0.0-r39.jar` 放进 `mods` 文件夹。
 2. **删掉所有旧的同名 jar**（r1 ~ r34，尤其是 r28/r30 那两份带弹出菜单摆法的）：多个版本会同时打补丁，行为不确定。
    r36 起这一步模组自己会盯着——`mods` 里发现多份时会提醒你把旧的删掉。
 
@@ -387,8 +396,10 @@ NeoForge 21.1 的加载顺序是「构造模组 → 加载配置 → 注册 → 
   唯一真解析的是 `mcmod.info`（走标准库 `json`）。**教训**：这脚本第一次跑就报了 2 条 FAIL，查下来是被检查的文件没错、
   **检查器自己错了**（`re.search` 带了 `re.S`，`(.+)$` 一路吃到文件结尾，后面的定界符判断全失真）——
   报警先怀疑报警的人，别顺手去改真相。
-- 事实依据放在 `tools/ground-truth/` 的两份 javap 摘要里（哪份来自哪个 jar、哪个版本，都写在文件头）：
-  - `gtceu-8.0.0-snapshot.javap.txt`：与实装同一构建的 GTM 快照；
+- 事实依据放在 `tools/ground-truth/` 的几份 javap 摘要里（哪份来自哪个 jar、哪个版本，都写在文件头）：
+  - `gtceu-8.0.0-snapshot.javap.txt`：与实装同一构建的 GTM 快照（r39 起重建为 `+01bda09` / maven build 96）；
+  - `modularui-nested-in-gtceu-01bda09.javap.txt`：格雷 jar 内嵌的 ModularUI 3.3.1-SNAPSHOT 字节码
+    （r39 新增——muicompat 三条挂钩与 MenuKeepOnScreen 反射链自此有了运行时同款确证）；
   - `jei-19.27.0.340.javap.txt`：与实装同版本的 JEI api。
 
 ## 版本历程（都是真踩过的坑）
@@ -419,6 +430,7 @@ NeoForge 21.1 的加载顺序是「构造模组 → 加载配置 → 注册 → 
 | r34 | **配置扩成四组 + 游戏内命令**：① `[fixes]` 给五个修复各一个独立开关（默认全 true＝行为与 r32 一字不差；崩溃修复关掉时日志/状态里带⚠警告），配置到手那一刻两份日志各记一行「[修复开关] 本次哪几个开着」；② `[logs] writeStartupLog` 与 `[report] enabled` 两个**写文件总开关**——为兑现「关掉＝本次一个字节都不写」，逐行日志的**创建**与报告的**落盘**都从构造时推迟到配置读到那一刻（期间行先攒内存，决定「写」时按原时间戳补写；5 秒轮询兜底防配置事件不来，最坏情况退回 r32 的照写行为）；③ 客户端命令 `/gtmfix status｜reload｜report`（`RegisterClientCommandsEvent`，不开作弊可用）：看开关与实时战况、强制立刻重读配置生效（反射走 FML 自己 `ConfigWatcher → ConfigTracker.loadConfig` 同一条内部路径，反射不到就如实说明——反正 NeoForge 本来就监视该文件，保存后约一秒自动重读）、打印三份文件绝对路径。`ModConfigs.getModConfigs` 登记表拿 `ModConfig` 与真实路径（r34 反汇编 loader 4.0.43 核实：`loadConfig` 是包私有 static、`Reloading(ModConfig)` 构造器与 `lock` 字段也是包私有，全部反射＋setAccessible，任何失败只降级） | 五个修复本体一字未动，只在入口各加一道配置判断；默认全开，不配置＝r32 行为 |
 
 | r38 | **配置防呆（新 `ConfigGuard`，修复本体依旧一字未动）**：用户提的痛点——手改 toml 把 `startupLogKeep` 填成 `abc` 或负数时「静默退回默认值，你以为生效了其实没有」。先用反编译 21.1.233 的 `ModConfigSpec`/`ConfigTracker` ＋ 拿 night-config 真 jar 跑实测钉死游戏行为（记录在 `tools/ground-truth/neoforge-1.21.1-config-correction-facts.md`）：读文件后 FML 先问注册 spec `isCorrect(玩家原文)`，不通过才「备份 -1.toml.bak → 逐值纠正 → 写回」；看不懂的写法回**默认**，**超范围的数字夹到边界**（`-5`→`-1`＝一份都不删，不是回 20！），`4.5` 能过 `test` 于是连文件都不改、运行时被 `getInt` 截成 `4` 静默用，键名拼错的行被整行删掉，语法坏掉则整份重建回全默认。防呆实现＝注册给 FML 的 spec 包一层旁观：`isCorrect` 那一刻用 `ValueSpec.test/correct` 与 `ConfigValue.getRaw`（与运行时同一个取法）把原文过一遍，翻成人话「这一项看不懂，本次按默认 X 走」写进逐行日志/现场报告/进世界聊天栏/status/reload 回显；陌生键名给最接近的正确拼写；「整份读挂」用「本次 load 没被问过 isCorrect＋文件此前存在」判定并点破 .bak 位置；游戏纠正后自己写回文件触发的回声重载用 15 秒窗口保护，提示不会被冲掉 | 默认行为与 r36 一字不差；只在「有项没被原样采用」时多这几行提示 |
+| r39 | **适配格雷最新快照 `+01bda09`（maven build 96），五项修复与所有能力一字未动**：从格雷官方 maven 取到与用户实装**同一构建**的 jar（内嵌件自报 `version = "8.0.0-SNAPSHOT+01bda09"`），把七条 mixin 挂钩与全部反射钉点逐条 `javap` 复核——`GTJEIPlugin` 四方法、`CategoryIcon$JeiCallWrapper` 两静态方法、`GTRecipeJEICategory`（具体类形态＋`TYPES`/`machineType`/静态注册口）、六个特殊分类构造器、`ConfigHolder` 两个开关字段、能力类 `CAP`/`of`/`mapIngredientToEntryList`、`GTRecipe` 取数链路，**全部一字未变**；build 95→96 官方源码全量 diff 只有 5 个文件（AE2 存储总线 ×3、Jade 提示 ×2），与本模组接触面零交集；启动崩溃链（`CategoryIcon` 抢跑 `getRuntime()`）原样存在——修复一个不能少。**顺带解除 r28/r31 记录的「本机局限」**：格雷 jar 里内嵌的 `modularui-mc1.21.1-3.3.1-SNAPSHOT.jar` 类名未重定位，muicompat 三条挂钩与 `MenuKeepOnScreen` 反射链的全部目标成员（含 `WidgetResizeNode.postFullResize()`、`UIType.isScreen`、`AbstractScrollWidget.getScrollX/Y`，以及「`WidgetNode` 查无此类」的反证）第一次拿到**运行时同款字节码**确证；两份 javap 真值重建/新增进 `tools/ground-truth/`。`require = 0` 与 `defaultRequire = 0` 按约定保留（防的是将来再变） | 装了 01bda09 的玩家换上 r39 即全套生效；行为与 r38 一字不差，变的是「核过的快照」与证据等级 |
 
 这几段经验一句话总结：**Mixin 的错要分成三种——「方法没匹配上」（可以 `require = 0` 降级成「这项不补」）、「类转换时解析不到类名」（整个模组加载失败，`require = 0` 毫无用处），以及 r12 学到的最阴险的一种：「挂钩钉对了，但目标方法体半路抛异常，TAIL 永远执行不到」——JEI 把插件异常吞掉记日志，表面上什么都不发生。要接管一个不可靠的方法，就得站在它进门口（HEAD）取消原方法自己重放，而不是等它走到出口（TAIL）。**
 
@@ -441,7 +453,7 @@ NeoForge 21.1 的加载顺序是「构造模组 → 加载配置 → 注册 → 
 [校正自检（r36 一次性体检）] ✅修复①·启动崩溃：硬挂钩（require=1）：游戏能进就说明已落地｜✅修复②…｜…修复④：注入目标都在，只是本次还没打开过格雷的多方块结构页（打开一次即生效）｜…   ← r36：五项逐条结论，一次写全；进报告与两份日志
 ⚠ 界面校正本次可能未生效（修复⑤·弹出菜单不出屏：玩家已显示过 ModularUI 界面、挂钩却没跑过一次——这条大概率没落地）。多半是格雷 / ModularUI / JEI 更新导致的，其余修复不受影响；请把 gtm_jei_logs/…（或 /gtmfix report 指路的文件）发给作者，一眼能定位。   ← r36：只在可疑时才出现这一行（聊天栏同样只在这种时候多一行）
 上次退出情况：⚠ 上次的日志（startup-20260925-…log）没有「进程退出」收尾行——上次没走到收尾就停了（崩溃后被直接收走、被强杀、死机，或上次游戏还开着没关都算这一类）。   ← r36：反查结论；上次正常时是一行中性话
-本模组版本：1.0.0-r38（和 jar 文件名一致；现场报告与 /gtmfix status 里也会各出现一次）   ← r36：逐行日志头部新增
+本模组版本：1.0.0-r39（和 jar 文件名一致；现场报告与 /gtmfix status 里也会各出现一次）   ← r36：逐行日志头部新增
 ⚠ mods 文件夹里有 2 份本模组的 jar（当前这份与更早的一份）：同一个模组的多份副本会同时打补丁、行为不可预测——请只保留最新那一份，其余删掉。   ← r36：只在真装了多份时才出现
 [配置防呆] [logs] startupLogKeep（启动日志保留份数）：这一项看不懂——写的是 "abc"（这里只能填 -1 ~ 10000 的整数），本次按默认 20 走（文件里这行会被游戏自动改回默认值）   ← r38：只在真有项没被原样采用时才出现（超范围/小数/拼错/整份读挂各有专句）
 ```

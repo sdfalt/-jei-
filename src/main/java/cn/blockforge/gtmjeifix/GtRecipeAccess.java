@@ -26,7 +26,9 @@ import java.util.List;
  * </pre>
  * 三个名字（{@code CAP} 静态字段、{@code getInputContents/getOutputContents}、
  * {@code mapIngredientToEntryList}、{@code getStacks}）都已用与用户同一构建的
- * {@code gtceu-1.21.1-8.0.0-SNAPSHOT+20260916} 的 class 文件核对过。
+ * {@code gtceu-1.21.1-8.0.0-SNAPSHOT+20260916} 的 class 文件核对过；
+ * r39 再对 {@code +01bda09}（maven build 96）复核：四个名字与内嵌 MUI 的
+ * {@code ItemEntryList/FluidEntryList.getStacks()} 依旧一字未变。
  *
  * <p>取不到的一律返回空集合（页面少摆几格），不抛异常。元素类型不匹配时会被
  * {@code instanceof} 过滤掉，所以也不存在 {@code ClassCastException} 冒到 JEI 的风险。

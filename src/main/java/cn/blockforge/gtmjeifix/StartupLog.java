@@ -229,6 +229,128 @@ final class StartupLog {
         }
     }
 
+    // ---------------- r36：上次是不是崩了（反查最近一份日志的收尾行） ----------------
+
+    /** 收尾行的判据：关闭钩子写的最后一行必含这段字（与 {@link #finish(String)} 的文案同源）。 */
+    private static final String EXIT_MARKER = "进程退出";
+
+    private static volatile boolean prevChecked = false;
+    private static volatile boolean prevAbnormal = false;
+    private static volatile String prevSummary = "还没查";
+    private static volatile String prevWarning = null;
+
+    /**
+     * 反查「上一次启动」那份日志：进程收尾时关闭钩子会补一行「=== 进程退出（…） ===」，
+     * <b>缺这一行 = 上次没走到钩子就没了</b>（崩溃后被系统/启动器直接收走、强杀、死机）。
+     * 下次进游戏时在日志/报告/聊天里明说一句，并把那份文件的末尾指路——新手最常犯的
+     * 就是「崩了不知道自己崩过、也不知道该看哪份文件」。
+     *
+     * <p>判不准就闭嘴，绝不瞎报警：
+     * ① 文件夹里查不到上一次那份（第一次装、上次 {@code writeStartupLog=false}）→ 中性一句；
+     * ② 那份日志已经放了 30 天（整合包长期没开过）→ 不拿老黄历吓唬人；
+     * ③ 读不动 → 中性一句；
+     * ④ 上次游戏其实还开着（双开的极小概率）→ 文案里如实带一句「或游戏上次没关」。
+     */
+    static void inspectPreviousRun() {
+        if (prevChecked) return;
+        prevChecked = true;
+        try {
+            Path dir = gameDir().resolve(DIR_NAME);
+            List<Path> logs = new ArrayList<>();
+            try (Stream<Path> files = Files.list(dir)) {
+                for (Path p : (Iterable<Path>) files.filter(StartupLog::isOurLog)::iterator) {
+                    logs.add(p);
+                }
+            } catch (java.nio.file.NoSuchFileException noDir) {
+                prevSummary = "上次退出情况：" + DIR_NAME + " 里还没有历史日志"
+                        + "（第一次安装，或上次没开逐行日志）——无从反查，属正常。";
+                return;
+            }
+            if (logs.isEmpty()) {
+                prevSummary = "上次退出情况：" + DIR_NAME + " 里没有可反查的历史日志（第一次安装或上次关了写日志），属正常。";
+                return;
+            }
+            logs.sort(Comparator.reverseOrder());   // 文件名开头就是启动时刻：倒序 = 最新在前
+            Path prev = logs.get(0);
+            long ageMillis = System.currentTimeMillis() - Files.getLastModifiedTime(prev).toMillis();
+            if (ageMillis > 30L * 24 * 3600 * 1000) {
+                prevSummary = "上次退出情况：最近一份历史日志（" + prev.getFileName()
+                        + "）已经放了 30 天以上，不拿它判断这次。";
+                return;
+            }
+            String tail = readTail(prev, 64 * 1024);
+            if (tail == null) {
+                prevSummary = "上次退出情况：读不动 " + prev.getFileName() + "，跳过反查。";
+                return;
+            }
+            if (tail.contains(EXIT_MARKER)) {
+                prevSummary = "上次退出情况：上次的日志（" + prev.getFileName()
+                        + "）末尾有「" + EXIT_MARKER + "」收尾行，上次是正常退出的。";
+                return;
+            }
+            prevAbnormal = true;
+            String lastLine = lastMeaningfulLine(tail);
+            prevSummary = "上次退出情况：⚠ 上次的日志（" + prev.getFileName()
+                    + "）没有「" + EXIT_MARKER + "」收尾行——上次没走到收尾就停了"
+                    + "（游戏崩溃后被直接收走、被强杀、死机，或上次游戏还开着没关都算这一类）。";
+            prevWarning = "⚠ 上次未正常退出：最后停在「" + lastLine + "」。"
+                    + "现场见 " + DIR_NAME + "/" + prev.getFileName().toString()
+                    + " 的最后几十行（绝对路径 " + prev.toAbsolutePath() + "）。";
+            FixReport.note(prevSummary);
+            FixReport.note(prevWarning);
+            LOGGER.warn("[gtm_jei_startup_fix] {} {}", prevSummary, prevWarning);
+        } catch (Throwable t) {
+            prevSummary = "上次退出情况：反查没跑成（" + t.getClass().getSimpleName() + "），不影响任何东西。";
+            LOGGER.debug("[gtm_jei_startup_fix] 反查上次退出状态失败（可忽略）：{}", t.toString());
+        }
+    }
+
+    /** 上次是不是异常收场的（聊天摘要与 /gtmfix status 用）。 */
+    static boolean previousRunAbnormal() {
+        return prevAbnormal;
+    }
+
+    /** 一句话结论（正常/无从判断时给 status 用，不带 ⚠）。 */
+    static String previousRunLine() {
+        return prevSummary;
+    }
+
+    /** 报警行；上次正常或判不了就是 null。 */
+    static String previousRunWarning() {
+        return prevWarning;
+    }
+
+    /** 读文件末尾最多 {@code maxBytes} 个字节；读不动返回 null。日志都只有几百行，代价很小。 */
+    private static String readTail(Path p, int maxBytes) {
+        try (java.nio.channels.SeekableByteChannel ch = Files.newByteChannel(p)) {
+            long len = ch.size();
+            int n = (int) Math.min(len, maxBytes);
+            ch.position(len - n);
+            java.nio.ByteBuffer buf = java.nio.ByteBuffer.allocate(n);
+            int got = 0;
+            while (got < n) {
+                int r = ch.read(buf.position(got));
+                if (r <= 0) break;
+                got += r;
+            }
+            return new String(buf.array(), 0, got, StandardCharsets.UTF_8);
+        } catch (Throwable t) {
+            return null;
+        }
+    }
+
+    /** 末尾几十行里最后一条有内容的行（截到 120 字符，聊天栏放得下）。 */
+    private static String lastMeaningfulLine(String tail) {
+        String[] lines = tail.split("\n");
+        for (int i = lines.length - 1; i >= 0; i--) {
+            String s = lines[i].trim();
+            if (!s.isEmpty()) {
+                return s.length() > 120 ? s.substring(0, 120) + "…" : s;
+            }
+        }
+        return "(末尾是空的)";
+    }
+
     /**
      * 按 {@code logs.writeStartupLog} 决定本次启动那份文件的去留。调用方持锁，只会执行一次。
      * 决定「建」时把攒下的 {@link #earlyLines} 原顺序补写；决定「不建」时一个字节都不落盘。
@@ -312,6 +434,10 @@ final class StartupLog {
         List<String> out = new ArrayList<>();
         out.add("=== " + GtmJeiStartupFix.MOD_ID + " 启动日志（每次启动一份，不会覆盖上一次） ===");
         out.add("启动时刻：" + HUMAN.format(now));
+        // r36：本模组自己的版本必须在所有输出里看得见——mods 文件夹里 rXX 并存时，
+        // 日志里这一行就是「你到底在跑哪一份」的唯一凭据（与 jar 文件名同源，都读模组元数据）。
+        out.add("本模组版本：" + FixReport.modVersion(GtmJeiStartupFix.MOD_ID)
+                + "（和 jar 文件名一致；现场报告与 /gtmfix status 里也会各出现一次）");
         out.add("这份文件：" + DIR_NAME + "/" + actualFileName
                 + "　（游戏根目录 = " + safeGameDir() + "）");
         out.add("保留几份由配置决定：" + FixConfig.filePathHint()

@@ -131,6 +131,16 @@ public final class MultiblockEmbedOffset {
         return disabled;
     }
 
+    /** r36：给校正自检查用——捕获端挂钩（JEI 内嵌绘制入口）有没有真跑过一次；跑过＝注入落地。 */
+    public static boolean isHookFired() {
+        return hookFired;
+    }
+
+    /** r36：给校正自检查用——是不是因为连续捕获异常被自动停用了。 */
+    public static boolean isRuntimeDisabled() {
+        return disabled;
+    }
+
     /** 由 {@code MultiblockViewportShiftMixin} 在真的加过偏移之后回调，只用于统计与报告。 */
     public static void noteApplied(int dx, int dy) {
         appliedCount++;

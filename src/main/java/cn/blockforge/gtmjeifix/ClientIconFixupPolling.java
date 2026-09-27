@@ -76,6 +76,9 @@ final class ClientIconFixupPolling {
                 JeiDiagnostics.ensureProbe(elapsed >= CHAT_FALLBACK_TICKS);
                 // r32 兜底：万一配置事件没来，这里补做一次「按配置清理旧日志」；清过就立刻返回
                 StartupLog.ensureRetentionApplied();
+                // r36：顺带探测「玩家显示过 ModularUI 界面没有」——修复⑤自检的证据之一
+                //（postFullResize 在任何一次 MUI 界面排版时都会被调到；用过界面而挂钩没跑＝大概率没落地）
+                FixHealth.observeModularScreen();
             } catch (RuntimeException | LinkageError e) {
                 LOGGER.debug("[gtm_jei_startup_fix] 轮询补建/诊断出错（不影响游戏）：{}", e.toString());
             }
@@ -91,12 +94,15 @@ final class ClientIconFixupPolling {
         Player player = Minecraft.getInstance().player;
         if (player == null) return;
         chatShown = true;
+        // r36：聊天摘要发出前先把「校正自检」跑一遍（结论无论发不发聊天都会进现场报告与日志；
+        // 放在开关判断之前，保证关掉聊天提醒的人报告里同样有这几行）。
+        FixHealth.runOnce();
         // r32：这一步整块可以被配置关掉（config/gtm_jei_startup_fix.toml → messages.joinChatReminder）。
         // 关掉只是不打字到聊天栏：现场报告、本次启动日志、游戏日志一律照写，排查问题的能力不打折。
         if (!FixConfig.joinChatReminder()) {
             FixReport.note("[进世界提示] 已按配置关闭（" + FixConfig.filePathHint()
                     + " 里 messages.joinChatReminder = false），聊天栏这次什么都不发。"
-                    + "结论仍然写进本文件与 " + FixReport.logHint() + "。");
+                    + "结论（含 r36 的校正自检、上次退出反查）仍然写进本文件与 " + FixReport.logHint() + "。");
             LOGGER.info("[gtm_jei_startup_fix] 进世界的聊天提醒已按配置关闭，结论只进日志/报告：{}；"
                     + "补注册状态：{}", JeiDiagnostics.chatSummary(), GtRegistrationBackfill.summary());
             return;
@@ -112,6 +118,30 @@ final class ClientIconFixupPolling {
                 player.displayClientMessage(Component.literal(head
                         + MultiblockEmbedOffset.statusLine()
                         + "；" + MenuKeepOnScreen.statusLine()), false);
+            }
+            // r36 新增三条「该出声时才出声」的行：平时一条都不占，出了问题第一行就能看到。
+            String fixWarn = FixHealth.warningLine();
+            if (fixWarn != null) {
+                player.displayClientMessage(Component.literal("§c" + head + fixWarn), false);
+            }
+            if (StartupLog.previousRunAbnormal()) {
+                player.displayClientMessage(Component.literal("§c" + head
+                        + "上次退出反查：" + StartupLog.previousRunWarning()), false);
+            }
+            String dup = FixHealth.jarDupWarning();
+            if (dup != null) {
+                player.displayClientMessage(Component.literal("§c" + head + dup), false);
+            }
+            // r38：配置防呆——玩家手写的某一项没被原样采用时（看不懂/超范围/拼错/整份读挂），
+            // 聊天栏必须替游戏把这几句喊出来；一次最多 3 条，多了去报告与 status 看。
+            java.util.List<String> cfgWarn = ConfigGuard.current();
+            for (int i = 0; i < cfgWarn.size() && i < 3; i++) {
+                player.displayClientMessage(Component.literal("§c" + head + cfgWarn.get(i)), false);
+            }
+            if (cfgWarn.size() > 3) {
+                player.displayClientMessage(Component.literal("§c" + head
+                        + "配置防呆：还有 " + (cfgWarn.size() - 3) + " 处没念完，"
+                        + "全文见现场报告，或敲 /gtmfix status 一条命令看全。"), false);
             }
             player.displayClientMessage(Component.literal(head + "现场报告：游戏根目录 "
                     + FixReport.FILE_NAME + "；本次启动逐行日志："
@@ -142,6 +172,9 @@ final class ClientIconFixupPolling {
     private void finish() {
         if (finished) return;
         finished = true;
+        // r36：轮询收尾时自检肯定已具备下结论的条件（真没进世界的人拿不到聊天行，
+        // 但报告与日志里必须有这几行）。runOnce 幂等，进过聊天摘要那段就是空转。
+        FixHealth.runOnce();
         // r16：在「本次启动专属」那份日志里留个收尾标记，
         // 这样看文件就知道启动阶段到这儿已经全部结束（后面再有的行都是运行中产生的）
         FixReport.note("[启动阶段结束] 轮询已注销；这份日志到上面一行为止就是本次启动的全部过程。");

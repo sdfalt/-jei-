@@ -9,7 +9,7 @@ import net.neoforged.neoforge.common.NeoForge;
 import org.slf4j.Logger;
 
 /**
- * GTM (GregTech: CEu Modern) 8.0.0-SNAPSHOT 启动崩溃修复 —— r32。
+ * GTM (GregTech: CEu Modern) 8.0.0-SNAPSHOT 启动崩溃修复 —— r38。
  *
  * <p><b>崩溃链（原文报错 {@code Cannot invoke "mezz.jei.api.runtime.IJeiRuntime.getJeiHelpers()"
  * because the return of "...GTJEIPlugin.getRuntime()" is null}）</b>：
@@ -116,6 +116,27 @@ import org.slf4j.Logger;
  *     （为此日志与报告的落盘都推迟到配置读到那一刻再决定，见 {@link StartupLog} 与
  *     {@link FixReport} 的类注释）。
  *
+ * <p><b>r36 新增：排查三连升级（不改任何修复逻辑）</b>：
+ * ① <b>静默失效自检</b>（{@link FixHealth}）——muicompat 那份配置是 {@code defaultRequire=0}，
+ *     注入目标找不到时宁可跳过不崩，副作用是格雷/ModularUI/JEI 一更新、界面校正可能<b>一声不响地
+ *     不干活</b>。现在每条校正两道判据：启动后用反射预检「钉住的目标类与方法还在不在」，
+ *     运行时看「挂钩真跑过没有」（修复⑤另有「显示过 ModularUI 界面却没跑」的加强判据）；
+ *     结论进现场报告与日志（{@code [校正自检]} 行），可疑时进世界聊天栏加一条 ⚠。
+ * ② <b>本模组版本出现在所有输出里</b>——逐行日志头部新增「本模组版本」一行（原先只有 Java/系统），
+ *     {@code /gtmfix status} 也念；并自动扫描 mods 文件夹：装了不止一份
+ *     {@code gtm_jei_startup_fix*.jar} 就在 status/报告/聊天里提醒只留最新（多份同名 jar 会同时打补丁）。
+ * ③ <b>上次是不是崩了</b>——{@link StartupLog#inspectPreviousRun()} 反查最近一份旧日志末尾有没有
+ *     关闭钩子写的「进程退出」收尾行；没有＝上次硬崩/被强杀（或上次没关游戏），
+ *     进游戏与 status 都会明说，并指路那份文件的绝对路径与最后停在的行。
+ *
+ * <p><b>r38 新增：配置防呆（{@link ConfigGuard}）</b>——手改 {@code config/gtm_jei_startup_fix.toml}
+ * 把某一项填成看不懂的写法（{@code abc}、带引号的 {@code "40"}、{@code 4.5}、超范围、键名拼错，
+ * 或整份文件语法坏掉）时，NeoForge 的处理全是<b>静默</b>的：悄悄退回默认值、悄悄夹到边界、
+ * 悄悄删掉拼错的行、甚至悄悄把整份文件重建回全默认（原文只剩 .bak 备份）——你以为生效了其实没有。
+ * 现在注册给 NeoForge 的 spec 包了一层旁观：它每次纠正之前用<b>它自己的判据</b>把玩家原文过一遍，
+ * 每一条没被原样采用的项都会明说一句「这一项看不懂，本次按默认 X 走」（含该怎么写才对），
+ * 逐行日志、现场报告、进世界聊天栏与 gtmfix 的 status/reload 输出四处同步。
+ *
  * <p>任何一步结构对不上都只降级、不崩溃。对 GTM 全程按字符串类名反射访问；
  * 对 JEI 用官方 api jar 作 compileOnly 依赖，成品 jar 不打包它们。
  *
@@ -136,7 +157,13 @@ import org.slf4j.Logger;
  * r34 配置扩成四组：[fixes] 五个修复各自独立开关（默认全开，行为不变）、
  * [logs] writeStartupLog 与 [report] enabled 两个写文件总开关（关掉＝本次一个字节都不写，
  * 落盘推迟到配置读到那一刻再决定）、[messages] 照旧；新增游戏内客户端命令
- * /gtmfix status｜reload｜report（看开关、强制重读配置立刻生效、拿报告路径）。
+ * /gtmfix status｜reload｜report（看开关、强制重读配置立刻生效、拿报告路径）；
+ * r36 排查升级（修复逻辑一字未动）：注入目标预检＋运行时钩子计数的「静默失效」自检（FixHealth）、
+ * 日志头部写本模组版本＋mods 里多份同名 jar 的提醒、上次启动没写收尾行的「异常退出」反查；
+ * r38 配置防呆（ConfigGuard，修复逻辑同样一字未动）：手改 toml 填坏某项时游戏只会静默按
+ * 默认/边界处理，现在包一层 spec 在纠正前用游戏自己的判据审一遍原文，
+ * 「这一项看不懂，本次按默认 X 走」逐条写进日志、报告、聊天栏与 status；
+ * 键名拼错与「整份文件语法坏掉被重建」这两种最坑的情况也各有专句。
  */
 @Mod(GtmJeiStartupFix.MOD_ID)
 public final class GtmJeiStartupFix {
@@ -182,7 +209,10 @@ public final class GtmJeiStartupFix {
                 + "游戏里还可以敲 /gtmfix status（看现状）、reload（改完配置立刻重读生效）、"
                 + "report（拿三份文件的完整路径），不需要作弊权限。"
                 + "此刻 NeoForge 还没读这个文件（它在本模组构造之后才加载配置），"
-                + "读到后会在这份日志里各补一行「[修复开关] …」「[日志保留] …」说明实际按什么在走。");
+                + "读到后会在这份日志里各补一行「[修复开关] …」「[日志保留] …」说明实际按什么在走。"
+                + "r38 起再加一道防呆（ConfigGuard）：哪一项被填成看不懂的写法（abc、带引号的数字、"
+                + "小数、超范围）或键名拼错、甚至整份文件语法坏掉，游戏都只会静默按默认/边界处理，"
+                + "现在会逐条明说「这一项看不懂，本次按默认 X 走」——日志、报告、聊天栏与 status 四处同步。");
         FixReport.note("[兼容补丁] r17 的「RecipeSlot 字段补丁」已就位：第一次打开配方页时才生效，"
                 + "生效时会在这份日志里记一条「已为 ModularUI 补回字段」；没记就是没触发（老 JEI 或没装 ModularUI）。");
         FixReport.note("[多方块预览校正] r24 的位置补丁已就位（客户端）：打开 JEI 的格雷多方块结构页时生效，"

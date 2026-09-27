@@ -89,6 +89,19 @@ public class JeiRecipeSlotCompatPlugin implements IMixinConfigPlugin {
     /** 只做一次（RecipeSlot 一辈子只会被类加载转换一次，双保险）。 */
     private static boolean done = false;
 
+    /**
+     * r36：把「补丁这次到底干了什么」记下来，给校正自检（{@code FixHealth}）一句话回读。
+     * 初值就是「还没轮到它」——RecipeSlot 类要到玩家第一次打开配方页才被加载转换，
+     * 在那之前读到的永远是初值，属正常，不是失效。
+     */
+    private static volatile String outcome =
+            "还没触发（本次启动还没打开过任何配方页，RecipeSlot 类还没被加载）";
+
+    /** r36：给校正自检查用。 */
+    public static String outcome() {
+        return outcome;
+    }
+
     @Override
     public void onLoad(String mixinPackage) {
         // 配置注册比模组构造还早，这里什么都不做，动手都在 preApply。
@@ -135,12 +148,14 @@ public class JeiRecipeSlotCompatPlugin implements IMixinConfigPlugin {
                         cn.blockforge.gtmjeifix.FixConfig.filePathHint());
                 FixReport.note("[兼容补丁] 已按配置关闭（fixes.enableRecipeSlotCompat=false），"
                         + "本次不向 RecipeSlot 补字段。");
+                outcome = "已按配置关闭（fixes.enableRecipeSlotCompat=false），本次没动 RecipeSlot";
                 return;
             }
             done = true;
 
             if (!modularuiPresent()) {
                 LOGGER.info("[gtm_jei_startup_fix] RecipeSlot 兼容补丁：没有检测到 ModularUI，本次不补字段。");
+                outcome = "没有检测到 ModularUI，本次不补（没人往这两个字段写数据，属正常）";
                 return;
             }
 
@@ -161,12 +176,15 @@ public class JeiRecipeSlotCompatPlugin implements IMixinConfigPlugin {
                         + "，ModularUI " + FixReport.modVersion("modularui") + "）";
                 LOGGER.info("[gtm_jei_startup_fix] {}", msg);
                 FixReport.note(msg);
+                outcome = "已补回 " + added + " 个字段，配方页不再因此崩溃";
             } else {
                 LOGGER.info("[gtm_jei_startup_fix] RecipeSlot 兼容补丁：字段还在（老版 JEI），无需处理。");
+                outcome = "字段还在（老版 JEI），无需处理——这条本来就没活干";
             }
         } catch (Throwable t) {
             // 无论出什么岔子都不能让类转换本身炸掉——最坏情况退回到「没有本补丁」的原状态。
             LOGGER.warn("[gtm_jei_startup_fix] RecipeSlot 兼容补丁执行出错（不影响其余功能）：{}", t.toString());
+            outcome = "执行出错（已降级为没有本补丁）：" + t;
         }
     }
 

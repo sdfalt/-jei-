@@ -23,7 +23,10 @@ import java.util.List;
  * <ul>
  * <li><b>{@code /gtmfix status}</b> —— 不改任何文件，把现在的实际状态念给你听：
  *     五个修复开关各是什么、聊天提醒/日志份数/两个写文件开关、配置读到没有、
- *     多方块预览校正与弹出菜单校正各自的实时战况、各方块模组的版本号。</li>
+ *     多方块预览校正与弹出菜单校正各自的实时战况、各方块模组的版本号。
+ *     r36 起还念：校正自检（每项修复的注入到底落没落地）、mods 里是不是装了好几份同名 jar、
+ *     上一次启动是不是正常退出；r38 起还念：配置防呆结论（手改 toml 时哪几项没按你写的原样生效、
+ *     各自实际按什么在走）。</li>
  * <li><b>{@code /gtmfix reload}</b> —— 记事本改完 {@code config/gtm_jei_startup_fix.toml}
  *     保存后敲一下：强制 NeoForge 立刻重读（反射走它自己 {@code ConfigWatcher} 同一条路，
  *     见 {@link FixConfig#reloadNow()}），然后按新值把该重挂的钩子/清理重新做一遍，
@@ -60,7 +63,7 @@ public final class GtmfixCommand {
     private static int usage(CommandContext<CommandSourceStack> ctx) {
         send(ctx, List.of(
                 "用法：/gtmfix status ｜ /gtmfix reload ｜ /gtmfix report",
-                "  status = 看现在哪几个修复开着、配置读到没有（不改动任何东西）",
+                "  status = 看现在哪几个修复开着、校正自检结果、上次是不是正常退出（不改动任何东西）",
                 "  reload = 改完 " + FixConfig.filePathHint() + " 保存后敲这个，立刻重读并生效",
                 "  report = 告诉你现场报告和本次启动日志的完整路径"));
         return success();
@@ -74,6 +77,29 @@ public final class GtmfixCommand {
                 + "｜JEI " + FixReport.modVersion("jei")
                 + "｜gtceu " + FixReport.modVersion("gtceu")
                 + "｜ModularUI " + FixReport.modVersion("modularui"));
+        // r36：三行「不坏不说、坏了先响」的排查信息——自检幂等，这里调就是确保跑过。
+        FixHealth.runOnce();
+        lines.add(FixHealth.selfVersionLine());
+        String dup = FixHealth.jarDupWarning();
+        if (dup != null) {
+            lines.add(dup);
+        }
+        lines.add("校正自检：" + FixHealth.summaryLine());
+        String fixWarn = FixHealth.warningLine();
+        if (fixWarn != null) {
+            lines.add(fixWarn);
+        }
+        lines.add(StartupLog.previousRunLine());
+        // r38：配置防呆——把「哪几项没按玩家写的生效」摆在配置文件路径的紧上面。
+        java.util.List<String> cfgFindings = ConfigGuard.current();
+        if (cfgFindings.isEmpty()) {
+            lines.add(ConfigGuard.summaryLine() + "。");
+        } else {
+            lines.add(ConfigGuard.summaryLine() + "：");
+            for (String f : cfgFindings) {
+                lines.add("　" + f);
+            }
+        }
         lines.add("配置文件：" + FixConfig.absoluteFilePath()
                 + "（" + (FixConfig.isLoaded() ? "已读到" : "还没读到，下面全是默认值") + "）");
         lines.add("修复开关：" + FixConfig.fixesSummary());
@@ -110,6 +136,16 @@ public final class GtmfixCommand {
         // 已把「该重挂的重新挂、该清的重新清」并记进日志；失败/版本差异时下面这条兜底保证同等的效果。
         FixConfig.onConfigApplied("手动 /gtmfix reload");
         lines.add("重读后的状态：" + FixConfig.fullStatus());
+        // r38：这次重读要是有哪一项没按玩家写的原样生效，紧跟着逐条念出来（没有就说一句好话）。
+        java.util.List<String> cfgFindingsReload = ConfigGuard.current();
+        if (cfgFindingsReload.isEmpty()) {
+            lines.add("配置防呆：这一份里每一行都按你写的原样生效。");
+        } else {
+            for (String f : cfgFindingsReload) {
+                lines.add(f);
+            }
+            lines.add("改法照每条行里写的来；再敲一次本命令即可复核。");
+        }
         send(ctx, lines);
         return success();
     }

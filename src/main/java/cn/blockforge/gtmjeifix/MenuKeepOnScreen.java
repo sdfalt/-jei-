@@ -249,6 +249,16 @@ public final class MenuKeepOnScreen {
         return MAX_REPORTED;
     }
 
+    /** r36：给校正自检查用——{@code postFullResize()} 挂钩有没有真跑过；跑过＝注入落地。 */
+    public static boolean isHookFired() {
+        return hookFired;
+    }
+
+    /** r36：给校正自检查用——是不是因为连续出错/取不到类被整块停用了。 */
+    public static boolean isFailDisabled() {
+        return disabled;
+    }
+
     /**
      * 由 {@code MenuResizeClampMixin} 在 {@code postFullResize()} 结尾调用。传进来的是那个排版节点对象
      * 本身（Mixin 实例回调里 {@code this} 就是目标实例），我们只用反射问它要 {@code getWidget()}，

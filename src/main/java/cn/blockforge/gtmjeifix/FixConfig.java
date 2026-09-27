@@ -35,8 +35,17 @@ import java.util.function.Function;
  *
  * <p><b>用哪套配置系统</b>：NeoForge 自带的 {@link ModConfigSpec}（不是自己造轮子解析文本）。
  * 好处：① 文件由游戏<b>自动生成</b>；② 注释由代码里的 {@code comment(...)} 生成，中英两行都写全；
- * ③ 填错类型/超出范围时游戏会<b>自动改回合法值</b>并在文件里留一行说明，不会因此崩；
+ * ③ 填错类型/超出范围时游戏会<b>自动改回合法值</b>并在文件里留一行说明，不会因此崩——
+ * 但它是<b>悄悄改</b>的（r38 前只有 latest.log 里一句英文模板）；
  * ④ 改完保存即生效（下面那条时序坑 + NeoForge 自带的文件监视）。
+ *
+ * <p><b>r38 配置防呆（{@link ConfigGuard}）</b>：正因为上面那个「悄悄」，手改 toml 把
+ * {@code startupLogKeep} 填成 {@code abc}、{@code -5}、{@code 4.5}、带引号的 {@code "40"}，
+ * 或把某个键名拼错时，游戏一律静默处理，你以为生效了其实没有。现在注册给 NeoForge 的
+ * 是包了一层的 spec：它在游戏动手纠正<b>之前</b>拿玩家原文过一遍<b>游戏自己的判据</b>，
+ * 每一条没被原样采用的项都翻成人话——「这一项看不懂，本次按默认 X 走」——
+ * 写进逐行日志、现场报告、进世界的聊天栏和 status 命令输出；
+ * 连「整份文件语法坏掉、被备份成 .bak 后重建」这种情况也会点破。详见 {@link ConfigGuard}。
  *
  * <p><b>为什么是 COMMON 而不是 CLIENT</b>：日志文件夹在服务端也会有，聊天提示只在客户端有；
  * COMMON 一份文件两边共用，玩家只需要记一个路径。
@@ -210,7 +219,15 @@ public final class FixConfig {
                         "Only gtm_jei_logs/startup-*.log files created by this mod are ever deleted; nothing else is touched.",
                         "",
                         "改完保存后：本模组会立刻按新份数再清一次（不用重启游戏）。",
-                        "After you change this, the mod prunes the folder again right away - no restart needed.")
+                        "After you change this, the mod prunes the folder again right away - no restart needed.",
+                        "",
+                        "⚠ 防呆提示（r38）：这一项要是被填成看不懂的写法（abc、带引号的 \"40\"、小数 4.5）、",
+                        "超出范围（只能 -1 ~ 10000）或者键名拼错，游戏不会崩，但会悄悄按默认/边界值在走。",
+                        "本模组会在逐行日志、现场报告、进世界的聊天栏和 gtmfix 状态命令里逐条明说：",
+                        "「这一项看不懂，本次按默认 X 走」——看见这种行就说明你的原意没生效，照着改回去即可。",
+                        "NOTE (new in r38): if this entry is unparseable, quoted, fractional or out of range,",
+                        "the game silently falls back to the default/clamped value. This mod now says so -",
+                        "look for lines starting with [配置防呆] in the log, report, chat and status command.")
                 .defineInRange("startupLogKeep", DEFAULT_LOG_KEEP, LOG_KEEP_UNLIMITED, LOG_KEEP_MAX);
         WRITE_STARTUP_LOG = BUILDER
                 .comment(
@@ -255,6 +272,24 @@ public final class FixConfig {
     /** 交给 NeoForge 注册的那份 spec（含上面所有注释）。 */
     public static final ModConfigSpec SPEC = BUILDER.build();
 
+    /**
+     * r38：真正登记给 NeoForge 的是这层<b>旁观包装</b>（{@link ConfigGuard}）。
+     * 它不改任何行为，只是在游戏每次读文件、问「这份对不对」的那一刻，
+     * 拿游戏<b>自己的判据</b>把玩家手写的原始值过一遍，把没被原样采用的项翻译成
+     * 一句人话（「这一项看不懂，本次按默认 X 走」）。包不过去就退回裸 SPEC，功能不受影响。
+     */
+    static final net.neoforged.fml.config.IConfigSpec GUARDED_SPEC;
+
+    static {
+        net.neoforged.fml.config.IConfigSpec guarded;
+        try {
+            guarded = ConfigGuard.wrap(SPEC);
+        } catch (Throwable t) {
+            guarded = SPEC;   // 理论上到不了这里；真到了宁可没有防呆提示，也不能不注册配置
+        }
+        GUARDED_SPEC = guarded;
+    }
+
     /** 是否已经挂过配置事件（防重复注册）。 */
     private static boolean hooked = false;
 
@@ -266,9 +301,18 @@ public final class FixConfig {
      * @param modBus 模组自己的事件总线（{@code ModConfigEvent} 是 IModBusEvent，只在这条总线上走）
      */
     public static void register(IEventBus modBus) {
+        // r38：趁 NeoForge 还没动手读这份文件，先记一笔「此刻它在不在」——
+        // 之后某次加载如果它压根没来问过「这份对不对」，就能据此区分
+        // 「第一次生成文件」（正常）与「整份文件语法读挂了」（要大声告诉玩家）。
+        try {
+            ConfigGuard.noteFileExistedBeforeLoad(java.nio.file.Files.exists(
+                    net.neoforged.fml.loading.FMLPaths.CONFIGDIR.get().resolve(FILE_NAME)));
+        } catch (Throwable e) {
+            LOGGER.debug("[gtm_jei_startup_fix] 配置文件存在性预判失败（不影响游戏）：{}", e.toString());
+        }
         try {
             ModLoadingContext.get().getActiveContainer()
-                    .registerConfig(ModConfig.Type.COMMON, SPEC, FILE_NAME);
+                    .registerConfig(ModConfig.Type.COMMON, GUARDED_SPEC, FILE_NAME);
         } catch (Throwable e) {
             // 注册失败也绝不能拖垮模组：所有取值都有默认值兜底，日志只是不再自动清理
             LOGGER.warn("[gtm_jei_startup_fix] 配置文件注册失败（不影响游戏，按默认值走）：{}", e.toString());
@@ -291,6 +335,16 @@ public final class FixConfig {
      * ② 在根目录报告与本次启动日志里各记一行「本次哪几个修复开着、哪几个被关了」。
      */
     public static void onConfigApplied(String reason) {
+        // r38：先播报防呆结论，再走日志/报告那两步——「这一项其实没生效」必须排在
+        // 「本次按什么在走」前面，读的人才不会被后面那行已经夹过/退过默认的数字误导。
+        try {
+            for (String line : ConfigGuard.takeUnannounced()) {
+                LOGGER.warn("[gtm_jei_startup_fix] {}", line);
+                FixReport.note(line);   // note 内部会同步进本次启动的逐行日志
+            }
+        } catch (Throwable e) {
+            LOGGER.debug("[gtm_jei_startup_fix] 配置防呆播报出错（不影响游戏）：{}", e.toString());
+        }
         try {
             StartupLog.onConfigReady(reason);
         } catch (Throwable e) {
@@ -432,11 +486,13 @@ public final class FixConfig {
 
     /** 全部设置的一行摘要（/gtmfix 的 reload 回显用；status 命令自己按行展开）。 */
     public static String fullStatus() {
+        String guard = ConfigGuard.current().isEmpty() ? "" : "｜" + ConfigGuard.summaryLine();
         return "配置" + (isLoaded() ? "已读到" : "还没读到（暂按默认值）")
                 + "｜修复：" + fixesSummary()
                 + "｜" + describe()
                 + "｜写逐行日志=" + yesNo(writeStartupLogEnabled())
-                + "，写现场报告=" + yesNo(reportEnabled());
+                + "，写现场报告=" + yesNo(reportEnabled())
+                + guard;
     }
 
     // ---------------- /gtmfix reload 的「强制重读」 ----------------

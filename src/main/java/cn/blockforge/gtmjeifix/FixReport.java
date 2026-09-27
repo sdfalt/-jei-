@@ -82,6 +82,9 @@ public final class FixReport {
         // r16：同一次启动再写一份「按启动留档」的日志（每行都带时间戳，只追加不覆盖）
         // r34：这两处都不再当场落盘——配置读到后按 report.enabled / logs.writeStartupLog 决定。
         StartupLog.open(head);
+        // r36：趁「本次那份还没建、旧日志肯定还在文件夹里」这一刻反查上次收没收尾
+        //（晚一步就可能被按份数清理掉）。结论会同时进根目录报告与本次启动日志。
+        StartupLog.inspectPreviousRun();
         flush();
         note("[启动日志] 本次这一份：" + StartupLog.dirHint()
                 + "　（游戏根目录；上一次启动的还留在 " + LOG_DIR_NAME + " 里，没被顶掉）");

@@ -9,7 +9,7 @@ import net.neoforged.neoforge.common.NeoForge;
 import org.slf4j.Logger;
 
 /**
- * GTM (GregTech: CEu Modern) 8.0.0-SNAPSHOT 启动崩溃修复 —— r40。
+ * GTM (GregTech: CEu Modern) 8.0.0-SNAPSHOT 启动崩溃修复 —— r45。
  *
  * <p><b>崩溃链（原文报错 {@code Cannot invoke "mezz.jei.api.runtime.IJeiRuntime.getJeiHelpers()"
  * because the return of "...GTJEIPlugin.getRuntime()" is null}）</b>：
@@ -174,9 +174,9 @@ import org.slf4j.Logger;
  * r39 及以前把 gtceu/jei 依赖声明成 {@code side="BOTH"}＋required，
  * 专用服务端普遍不装 JEI（它是客户端模组），谁把这个 jar 误放进服务器 mods，
  * 服务端加载本模组时依赖检查当场失败、<b>整个服务器起不来</b>。r40 起：
- * ① gtceu/jei 两条依赖改为 {@code side="client"}（FML 4.0.43 的依赖校验第一步就是
+ * ① gtceu/jei 两条依赖改为仅客户端侧声明 {@code side="CLIENT"}（FML 4.0.43 的依赖校验第一步就是
  *   {@code DependencySide#isCorrectSide()} 按物理侧过滤——javap 实证；客户端照旧强制要求，
- *   服务端不再被强制要求 JEI）；
+ *   服务端不再被强制要求 JEI）。注意 r45 的教训：该值<b>必须大写</b>——见下；
  * ② 构造函数加专用服务端分支：只登记配置＋一句明确的「本模组在闲置」日志，
  *   不再输出那六段面向客户端的「修复已就位」文案；
  *   五项毛病在服务器上<b>物理不可能触发</b>的证据（CategoryIcon 构造第一句
@@ -193,6 +193,14 @@ import org.slf4j.Logger;
  * 两条重载在 build 100 的 offset 0 仍是裸 {@code invokestatic GTJEIPlugin.getRuntime}，
  * 崩溃链原样存在，五项修复一个都不能少（真值：tools/ground-truth/gtceu-8.0.0-snapshot.javap.txt
  * 已重建为 build 100，另新增 modularui-nested-in-gtceu-3a1493f.javap.txt）。
+ * r45 紧急修正（五项修复本体一字未动）：r40 引入的小写 {@code side="client"} 是致命笔误——
+ * 对用户实跑的 loader-4.0.42 反汇编确证：ModVersion 构造器里 side 走<b>大小写敏感</b>的
+ * {@code DependencySide.valueOf}（没有 type 字段那样的 toUpperCase 归一化），枚举常量只有
+ * CLIENT/SERVER/BOTH，小写值让 jar 在模组扫描阶段就抛 IllegalArgumentException、被判
+ * 「is not a valid mod file」，r40~r43 的包因此<b>在客户端启动即崩</b>（2026-09-30 用户日志）。
+ * 现改大写 {@code CLIENT}，依赖语义与 r40 设计意图一致；根因与逐字段解析方式存
+ * {@code tools/ground-truth/loader-4.0.42-modinfo-enum-parsing-javap.txt}，
+ * {@code tools/check_mod_metadata.py} 同步升级为对所有 side/ordering 值逐字节断言枚举常量名。
  */
 @Mod(GtmJeiStartupFix.MOD_ID)
 public final class GtmJeiStartupFix {

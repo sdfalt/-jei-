@@ -9,7 +9,7 @@ import net.neoforged.neoforge.common.NeoForge;
 import org.slf4j.Logger;
 
 /**
- * GTM (GregTech: CEu Modern) 8.0.0-SNAPSHOT 启动崩溃修复 —— r39。
+ * GTM (GregTech: CEu Modern) 8.0.0-SNAPSHOT 启动崩溃修复 —— r40。
  *
  * <p><b>崩溃链（原文报错 {@code Cannot invoke "mezz.jei.api.runtime.IJeiRuntime.getJeiHelpers()"
  * because the return of "...GTJEIPlugin.getRuntime()" is null}）</b>：
@@ -169,6 +169,30 @@ import org.slf4j.Logger;
  * {@code getRuntime()} 的崩溃链原样存在，五项修复一个都不能少；顺带取得格雷内嵌的
  * ModularUI 3.3.1-SNAPSHOT 字节码，muicompat 三条挂钩的证据等级由「源码」升为「javap
  * 确证」（真值存档与核对过程见 tools/ground-truth/）。
+ * r40 服务端说清楚（五项修复本体一字未动）：用户质疑「服务端装了会不会也有兼容性问题」，
+ * 拿真字节码逐条查证后结论是——<b>会，而且就出在我们自己的打包上</b>：
+ * r39 及以前把 gtceu/jei 依赖声明成 {@code side="BOTH"}＋required，
+ * 专用服务端普遍不装 JEI（它是客户端模组），谁把这个 jar 误放进服务器 mods，
+ * 服务端加载本模组时依赖检查当场失败、<b>整个服务器起不来</b>。r40 起：
+ * ① gtceu/jei 两条依赖改为 {@code side="client"}（FML 4.0.43 的依赖校验第一步就是
+ *   {@code DependencySide#isCorrectSide()} 按物理侧过滤——javap 实证；客户端照旧强制要求，
+ *   服务端不再被强制要求 JEI）；
+ * ② 构造函数加专用服务端分支：只登记配置＋一句明确的「本模组在闲置」日志，
+ *   不再输出那六段面向客户端的「修复已就位」文案；
+ *   五项毛病在服务器上<b>物理不可能触发</b>的证据（CategoryIcon 构造第一句
+ *   {@code GTCEu.isClientSide()} 为假直接 return；JEI 的插件加载与运行时分发整个关在
+ *   {@code Dist.isClient()} 之后）连同反汇编原文存 {@code tools/ground-truth/server-side-noop-javap.txt}；
+ * ③ 说明文字（三份元数据＋README）同步：为什么服务端不用装、误装了现在会怎样、
+ *   以及 NeoForge 1.21.1 进服按网络通道协商而非整表对账（本模组零通道注册，
+ *   客户端装没装都不影响进服；FML 4.0.43 已不解析 displayTest，javap 实证）。
+ * r43 适配 GTM 快照 3a1493f（maven build 100；修复逻辑一字未动）：拿该构建真 jar
+ * 全量 javap 复核七条 mixin 挂钩与全部反射钉点——22 个 GTM 钉点类与内嵌 ModularUI 的
+ * 15 个钉点类输出均与 01bda09（r39 基线）逐行一致、零漂移；01bda09→3a1493f 上游源码
+ * 共 4 个提交 20 个文件（过滤器数据组件化、工具 AOE 组件清理、LDPL 贴图、矿石研磨
+ * 配方统一），与本模组接触面零交集。{@code CategoryIcon$JeiCallWrapper.getRenderable}
+ * 两条重载在 build 100 的 offset 0 仍是裸 {@code invokestatic GTJEIPlugin.getRuntime}，
+ * 崩溃链原样存在，五项修复一个都不能少（真值：tools/ground-truth/gtceu-8.0.0-snapshot.javap.txt
+ * 已重建为 build 100，另新增 modularui-nested-in-gtceu-3a1493f.javap.txt）。
  */
 @Mod(GtmJeiStartupFix.MOD_ID)
 public final class GtmJeiStartupFix {
@@ -183,6 +207,30 @@ public final class GtmJeiStartupFix {
         // 真正按配置清理旧日志的动作挂在 FixConfig 注册的 ModConfigEvent 上。
         FixConfig.register(modEventBus);
         FixReport.start(FixReport.modVersion(MOD_ID));
+        // r40：专用服务端分支。本模组的五项修复全部钉在「只有物理客户端才会加载」的类上，
+        // 服务器既不会触发这些毛病（格雷 CategoryIcon 构造第一句就是 isClientSide 判断，
+        // 服务端直接跳过；JEI 的插件加载与运行时分发也整体关在 Dist.isClient() 之后——
+        // javap 实证见 tools/ground-truth/server-side-noop-javap.txt），
+        // 也不需要靠本模组去放行什么（本模组不注册任何网络通道；NeoForge 1.21.1 的
+        // 进服兼容按通道协商，不按模组整表对账）。所以这里只留一句明确的话就返回：
+        // 不再输出下面那六段面向客户端玩家的「修复已就位」文案（在服务器上它们全是误导），
+        // 也不注册客户端轮询/命令。配置文件照常登记——report/logs 开关在这台机器上仍有效，
+        // 管理员想让它一个字节都不写，把 [report]/[logs] 两个开关关掉即可。
+        if (!FMLEnvironment.dist.isClient()) {
+            LOGGER.info("[gtm_jei_startup_fix] 已加载（专用服务端）——本模组是纯客户端补丁，这台服务器上"
+                    + "没有任何东西需要它修：它修复的五项毛病（格雷启动崩溃、JEI 分类缺失、配方页崩溃、"
+                    + "多方块 3D 预览偏移、弹出菜单出屏）全部长在只有物理客户端才执行的代码路径上，"
+                    + "服务端根本走不到（格雷自己的 CategoryIcon 构造函数第一道判断就是 isClientSide）。"
+                    + "r40 起本模组不再要求服务器安装 JEI（格雷/JEI 依赖只约束客户端），所以误装在这里"
+                    + "既不拖垮开服、也不改动任何服务端行为；从服务器 mods 文件夹删掉本 jar 即可回到原样，"
+                    + "删与不删都不影响玩家进服（本模组不注册网络通道）。真正需要修的是客户端侧："
+                    + "请把与格雷快照配套的对应版本装进每位玩家的客户端。");
+            FixReport.note("[服务端] 本模组运行在专用服务端上：闲置。它要修的五项毛病都是客户端"
+                    + "（界面/启动）行为，服务端不会触发；建议从服务器 mods 移除本 jar，"
+                    + "并确保玩家的客户端已安装与格雷快照配套的对应版本（见 README）。本次报告与逐行日志照常按 "
+                    + FixConfig.filePathHint() + " 的 [report]/[logs] 开关走，关掉即一个字节不写。");
+            return;
+        }
         LOGGER.info("[gtm_jei_startup_fix] 已加载（{}）：修启动崩溃 + 补格雷配方分类 + 现场报告。"
                 + "每一步干没干活都会实时写进游戏根目录的 "
                 + FixReport.FILE_NAME + "，并且同步写一份到本次启动专属的 "
@@ -242,6 +290,9 @@ public final class GtmJeiStartupFix {
                 + "之后每次调整各记一行「第 N 次调整：分支 / 现场 y / 目标 y / 按钮矩形 / 滚动补偿 / 菜单尺寸 / 可视区」，"
                 + "最多 " + MenuKeepOnScreen.reportQuota() + " 条，其余只进日志文件。当前 ModularUI 版本 "
                 + FixReport.modVersion("modularui") + "。");
+        // 走到这里必然是客户端（专用服务端已在构造函数上面的 r40 分支 return）。
+        // 保留这道 dist 判断纯是防御：万一将来有人挪动上面那个早退，也不会把客户端
+        // tick 轮询/命令注册漏到服务端上。RegisterClientCommandsEvent 本就只在物理客户端发。
         if (FMLEnvironment.dist.isClient()) {
             ClientIconFixupPolling.register();
             // r34：游戏内命令 /gtmfix（status/reload/report）。注册在客户端命令表上：

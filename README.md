@@ -1,6 +1,6 @@
-# GTM JEI Startup Crash Fix（r45）
+# GTM JEI Startup Crash Fix（r46）
 
-装了这个模组，**GregTech CEu Modern（GTM）8.0.0-SNAPSHOT 在 Minecraft 1.21.1 / NeoForge 上就不会在启动时崩溃，JEI 里也能重新看到格雷配方分类，点开配方页（如搅拌机）也不再必崩**（r17 修复，见版本历程）。**本模组是客户端专用补丁：装在每位玩家的客户端上；服务端不用装、装了也不修任何东西——r40 起「误装到服务端」也不再惹任何麻烦**，来龙去脉见〈服务端要不要装？〉一节。注意：**请用 r45 或更新**——r40~r43 的包有一个元数据笔误（依赖 side 值误写小写），装上客户端会启动即崩，r45 已修好。
+装了这个模组，**GregTech CEu Modern（GTM）8.0.0-SNAPSHOT 在 Minecraft 1.21.1 / NeoForge 上就不会在启动时崩溃，JEI 里也能重新看到格雷配方分类，点开配方页（如搅拌机）也不再必崩**（r17 修复，见版本历程）。**本模组是客户端专用补丁：装在每位玩家的客户端上；服务端不用装、装了也不修任何东西——r40 起「误装到服务端」也不再惹任何麻烦**，来龙去脉见〈服务端要不要装？〉一节。注意：**请用 r45 或更新**——r40~r43 的包有一个元数据笔误（依赖 side 值误写小写），装上客户端会启动即崩，r45 已修好；当前最新 r46 只是把「核过的格雷快照」升到 `+d2ef26f`，行为与 r45 一字不差。
 
 适用环境（实测）：
 
@@ -8,10 +8,12 @@
 | --- | --- |
 | Minecraft | 1.21.1 |
 | NeoForge | 21.1.x；依赖下界声明为 **21.1.235**（编译与实测在 21.1.244 / 251） |
-| GregTech CEu Modern（`gtceu`） | 8.0.0-SNAPSHOT（r43 起按**最新快照 `+3a1493f`（maven build 100）**逐条字节码复核；`34f02a6`→`17e1700`→…→`01bda09`→`3a1493f` 全链兼容） |
+| GregTech CEu Modern（`gtceu`） | 8.0.0-SNAPSHOT（r46 起按**最新快照 `+d2ef26f`（maven build 101）**逐条字节码复核；`34f02a6`→`17e1700`→…→`01bda09`→`3a1493f`→`d2ef26f` 全链兼容） |
 | JEI | 19.x（实测 `19.56.0.441` 与 `19.57.0.448`；r17 起 ModularUI 不兼容崩溃也已修复） |
 
-本模组版本 `1.0.0-r45`，mod id `gtm_jei_startup_fix`，成品是 `build/libs/gtm_jei_startup_fix-1.0.0-r45.jar`。
+本模组版本 `1.0.0-r46`，mod id `gtm_jei_startup_fix`，成品是 `build/libs/gtm_jei_startup_fix-1.0.0-r46.jar`。
+
+r46 只做一件事：**适配格雷最新快照 `+d2ef26f`（maven build 101）**，五项修复与 r45 的所有能力一字未动。从格雷官方 maven 取到该构建真 jar（16,801,266 字节，内嵌 `neoforge.mods.toml` 自报 `version = "8.0.0-SNAPSHOT+d2ef26f"`，sha256 `d24ae3fa…aa0d7`），把七条 mixin 挂钩与全部反射钉点重新逐条 `javap`：GTM 侧 19 个钉点类、格雷内嵌 ModularUI 的15 个钉点类，输出与 `+3a1493f`（build 100）真值存档**逐行 diff 为空、零漂移**（顺带更正一处笔误：r43 文字写的「22 个钉点类」，其列举与 javap 存档实际都是 19 项，本轮起按实数标注）；`3a1493f→d2ef26f` 上游只有 **1 个提交改 1 个文件**——`api/multiblock/Predicates.java`（+2/-1，#5485「fix machines predicate not having a nonnull filter」），本模组源码不引用该类也不引用 `api.multiblock` 包（全量 grep 零命中），接触面零交集（官方 compare 全量清单核对）。崩溃链在 build 101 里**原样存在**——`CategoryIcon$JeiCallWrapper.getRenderable` 两条重载的第一条指令仍是裸的 `invokestatic GTJEIPlugin.getRuntime()`（`javap -c` 确证），一个修复都不能少。真值存档：`tools/ground-truth/gtceu-8.0.0-snapshot.javap.txt` 头部重建为 build 101（正文逐行未变），新增 `tools/ground-truth/modularui-nested-in-gtceu-d2ef26f.javap.txt`（与 3a1493f 内嵌件逐行一致，并首次为内嵌 jar 记 sha256 指纹）。
 
 r45 只做一件事：**修掉 r40~r43 打包里的一个致命笔误，其余行为相对 r43 零改动**。`neoforge.mods.toml` 中
 gtceu/jei 两条依赖的 `side` 值曾写成小写 `client`，而加载器（FML）解析该字段走**大小写敏感**的枚举
@@ -273,7 +275,7 @@ r31 把 r28/r30 那条「实在放不下就往屏幕边贴」的兜底**整条�
 
 ## 安装
 
-1. 把 `build/libs/gtm_jei_startup_fix-1.0.0-r45.jar` 放进**客户端**的 `mods` 文件夹。
+1. 把 `build/libs/gtm_jei_startup_fix-1.0.0-r46.jar` 放进**客户端**的 `mods` 文件夹。
 2. **删掉所有旧的同名 jar**（r1 ~ r43，尤其注意 r40~r43 这三份在客户端**启动即崩**、必须换 r45；以及 r28/r30 那两份带弹出菜单摆法的）：多个版本会同时打补丁，行为不确定。
    r36 起这一步模组自己会盯着——`mods` 里发现多份时会提醒你把旧的删掉。
 
@@ -465,11 +467,14 @@ NeoForge 21.1 的加载顺序是「构造模组 → 加载配置 → 注册 → 
   报警先怀疑报警的人，别顺手去改真相。
 - 事实依据放在 `tools/ground-truth/` 的几份 javap 摘要里（哪份来自哪个 jar、哪个版本，都写在文件头）：
   - `gtceu-8.0.0-snapshot.javap.txt`：与实装同一构建的 GTM 快照（r39 起重建为 `+01bda09` / maven build 96；
-    r43 再重建为 `+3a1493f` / maven build 100——两版正文逐行相同，文件头写明了核对结论）；
+    r43 再重建为 `+3a1493f` / maven build 100；r46 再重建为 `+d2ef26f` / maven build 101——三版正文逐行相同，
+    文件头写明了每轮核对结论与 jar 的 sha256）；
   - `modularui-nested-in-gtceu-01bda09.javap.txt`：格雷 jar 内嵌的 ModularUI 3.3.1-SNAPSHOT 字节码
     （r39 新增——muicompat 三条挂钩与 MenuKeepOnScreen 反射链自此有了运行时同款确证）；
   - `modularui-nested-in-gtceu-3a1493f.javap.txt`：同一内嵌件在 build 100 里的复核存档（r43 新增，
     与 01bda09 版逐行一致）；
+  - `modularui-nested-in-gtceu-d2ef26f.javap.txt`：同一内嵌件在 build 101 里的复核存档（r46 新增，
+    与 3a1493f 版逐行一致；头部新记内嵌 jar 的 sha256 指纹，供后续快照做字节级对照）；
   - `server-side-noop-javap.txt`：「五项毛病在专用服务端上物理不可能触发」与
     「依赖按物理侧过滤、进服按通道协商」的字节码依据（r40 新增——CategoryIcon 构造的
     `isClientSide` 早退、JEI 插件加载的 `Dist.isClient` 闸门、FML `DependencySide#isCorrectSide`、
@@ -511,6 +516,7 @@ NeoForge 21.1 的加载顺序是「构造模组 → 加载配置 → 注册 → 
 | r40 | **回应「服务端难道不用装吗」的质疑——查证 + 修掉一个真存在的开服事故（五项修复本体一字未动）**。用户质疑「装在服务端肯定也有兼容性问题，怎么可能不用装」。逐条拿真字节码查证（全部反汇编原文存 `tools/ground-truth/server-side-noop-javap.txt`）：① 五项毛病在**专用服务端物理上不可能触发**——格雷 `CategoryIcon` 构造函数第一条指令就是 `GTCEu.isClientSide()`（即 `FMLEnvironment.dist.isClient()`）为假直接 `return`，那条 `getRenderable→getRuntime()` 崩溃链永远走不到；JEI 自己把插件发现与运行时分发整个关在 `Dist.isClient()` 之后（服务端从不实例化 `IModPlugin`）；`RecipeSlot`/ModularUI 全是 GUI 渲染类——所以「不用装」本身成立。② **但 r39 及以前的打包在服务器上确有个真兼容性 bug**：`gtceu`/`jei` 依赖写成 `side="BOTH"`+`required`，FML 的依赖校验第一步就是 `DependencySide#isCorrectSide()` 按物理侧过滤（javap 实证），于是任何装了本模组的**专用服务端**都被强制要求装 JEI——而服务器普遍不装 JEI（JEI 官方就允许服务端不装，格雷自己也把 jei 声明为 optional）。谁把这 jar 误放进没 JEI 的服务器，`Missing or unsupported mandatory dependencies: jei` 当场挡死开服。③ 进服握手不背这个锅：FML 4.0.43 已**不解析** `displayTest`（Forge 那套整表对账在 NeoForge 1.21.1 不存在），进服兼容性按**网络 payload 通道**协商；本模组零通道注册，两端装不装都不影响进服。**改**：`gtceu`/`jei` 依赖 → 仅客户端侧声明（`neoforge.mods.toml`，注释详列依据；当时值写成小写 `side="client"`——r45 反汇编实证该字段大小写敏感、必须大写 `CLIENT`，此笔误令 r40~r43 在客户端启动即崩，见 r45 行）；构造函数加**专用服务端分支**——只登记配置 + 一句明确的「本模组闲置于此、删掉即恢复原样」日志/报告行，不再刷六段客户端「修复已就位」文案;`check_mod_metadata.py` 新增 `check_dependency_sides()` 死盯这条回归（BOTH 直接 FAIL）;三份 description + README + gradle.properties 同步「服务端要不要装」说明 | 客户端行为按 r40 设计应与 r39 一字不差（客户端仍强制要求 gtceu+jei，缺则拒绝加载不变）——但小写 side 笔误使 r40~r43 的包在客户端**启动即崩**，设计意图到 r45 才真正落地；变化只在服务端：误装不再拖垮开服、日志不再误导 |
 | r43 | **适配格雷最新快照 `+3a1493f`（maven build 100），五项修复与所有能力一字未动**：从格雷官方 maven 取到该构建真 jar（内嵌 `META-INF/neoforge.mods.toml` 自报 `version = "8.0.0-SNAPSHOT+3a1493f"`，16,801,219 字节），把七条 mixin 挂钩与全部反射钉点逐条 `javap` 复核——**GTM 侧 22 个钉点类**（`GTJEIPlugin`、`CategoryIcon`＋`CategoryIcon$JeiCallWrapper`、`GTRecipeJEICategory`、`GTRecipeCategory`、`GTRecipe`、`Item/FluidRecipeCapability`、`GTRegistries`、`ConfigHolder` 三件、`GTCEu$Mods`、六个特殊分类含 `ProgrammedCircuitJeiCategory`）与**内嵌 ModularUI 侧 15 个钉点类**（`ModularUIJeiCategory$UIWrapperWidget`、`Viewport`、`WidgetResizeNode`、`ModularScreen`、`Menu`、`AbstractMenuButton`、`IWidget`、`Area`、`UIType`、`AbstractScrollWidget`、`GuiContext`、两个 `EntryList` 等）的 javap 输出与 `+01bda09`（r39 基线）存档**逐行一致、零漂移**；`01bda09→3a1493f` 上游共 4 个提交 20 个文件（滤筒过滤器数据组件化、工具 AOE 数据组件清理、LDPL 管道贴图、矿石研磨配方统一修复——官方 compare 全量清单核对），与本模组接触面零交集；启动崩溃链原样存在——`CategoryIcon$JeiCallWrapper.getRenderable` 两条重载的 offset 0 仍是裸 `invokestatic GTJEIPlugin.getRuntime()`（`javap -c` 确证），一个修复都不能少。内嵌 `modularui-mc1.21.1-3.3.1-SNAPSHOT.jar` 与 01bda09 同版本同形态（1,798,556 字节、757 个 class、`WidgetNode` 依旧查无此类）。`gtceu-8.0.0-snapshot.javap.txt` 重建为 build 100，新增 `modularui-nested-in-gtceu-3a1493f.javap.txt`；`require = 0`/`defaultRequire = 0` 按约定保留 | 装了 3a1493f 的玩家换上 r43 即全套生效；行为与 r40 一字不差，变的是「核过的快照」标注与真值存档——但 r40~r43 共同携带的小写 side 笔误让这三版在客户端启动即崩（见 r45 行），真正「全套生效」从 r45 起 |
 | r45 | **紧急修正：小写 `side="client"` 是致命笔误——r40~r43 的包装了客户端就启动崩（五项修复本体一字未动）**。用户实录：换 r43 后启动即崩，加载器在扫描阶段就报 `is not a valid mod file`（报错文件正是本模组那份 r43 jar，异常原文 `No enum constant net.neoforged.neoforgespi.language.IModInfo$DependencySide.client`）。拿用户**实跑的** loader-4.0.42 反汇编确证（真值：`tools/ground-truth/loader-4.0.42-modinfo-enum-parsing-javap.txt`）：`ModInfo$ModVersion` 构造器对三个枚举字段解析方式不一致——`type` 先 `toUpperCase(Locale.ROOT)` 归一化再 `valueOf`（所以小写 `required` 侥幸没炸），`ordering` 与 `side` **直接** `valueOf`、大小写敏感，而 `DependencySide` 常量只有 `CLIENT/SERVER/BOTH`。小写值在模组**扫描阶段**就抛异常，整个 jar 被判无效——依赖按侧跳过的 r40 设计从未真正生效过。**改**：`neoforge.mods.toml` gtceu/jei 两条 `side` → 大写 `CLIENT`（语义与 r40 设计意图一字不差）；`check_mod_metadata.py::check_dependency_sides()` 从「断言 r40 约定」升级为对**所有**依赖块的 side/ordering 逐字节断言枚举常量名——此前这条自检把小写错值写死成「正确形态」，守门员自己放行了，教训记进 docstring；两份 toml 的 description、主类 javadoc、gradle.properties 同步；README 安装节加「r40~r43 必须换 r45」警示 | r40~r43 用户**必须**换 r45（旧包启动即崩）；r45 相对 r43 除修好这个笔误外行为零改动，3a1493f（build 100）兼容结论与五项修复全部继续有效 |
+| r46 | **适配格雷最新快照 `+d2ef26f`（maven build 101），五项修复与所有能力一字未动**：从格雷官方 maven 取到该构建真 jar（16,801,266 字节，内嵌 `META-INF/neoforge.mods.toml` 自报 `version = "8.0.0-SNAPSHOT+d2ef26f"`，sha256 `d24ae3fa…aa0d7`），把七条 mixin 挂钩与全部反射钉点逐条 `javap` 复核——**GTM 侧 19 个钉点类**（`GTJEIPlugin`、`CategoryIcon`＋`CategoryIcon$JeiCallWrapper`、`GTRecipeJEICategory`、`GTRecipeCategory`、`GTRecipe`、`Item/FluidRecipeCapability`、`GTRegistries`、`ConfigHolder` 三件、`GTCEu$Mods`、六个特殊分类含 `ProgrammedCircuitJeiCategory`；r43 行写的「22」系枚举计数笔误，列举与实际存档都是这 19 项，本轮起按实数标注）与**内嵌 ModularUI 侧 15 个钉点类**的 javap 输出与 `+3a1493f`（build 100）存档**逐行 diff 为空、零漂移**；`3a1493f→d2ef26f` 上游仅 **1 个提交 1 个文件**——`api/multiblock/Predicates.java`（+2/-1，#5485 machines predicate nonnull 过滤修复，官方 compare 全量清单核对），本模组源码不引用该类与该包（全量 grep 零命中），接触面零交集；启动崩溃链原样存在——`CategoryIcon$JeiCallWrapper.getRenderable` 两条重载的 offset 0 仍是裸 `invokestatic GTJEIPlugin.getRuntime()`（`javap -c` 确证），一个修复都不能少；源码中出现的全部格雷/MUI 类名（含 @Mixin targets 与反射字符串）在 build 101 逐个 javap 过存在性（唯二 MISS 是 JeiDiagnostics 有意试探的旧包名候选与 GtRegistrationBackfill 的包名前缀常量，均非钉点）。内嵌 `modularui-mc1.21.1-3.3.1-SNAPSHOT.jar` 与 3a1493f 同尺寸同形态（1,798,556 字节、757 个 class、`WidgetNode` 依旧查无此类），首次为其记 sha256 指纹（`57bd7acc…8a3b29`）。`gtceu-8.0.0-snapshot.javap.txt` 头部重建为 build 101（正文逐行未变），新增 `modularui-nested-in-gtceu-d2ef26f.javap.txt`；`require = 0`/`defaultRequire = 0` 按约定保留 | 装了 d2ef26f 的玩家换上 r46 即全套生效；行为与 r45 一字不差，变的只有「核过的快照」标注与真值存档 |
 
 这几段经验一句话总结：**Mixin 的错要分成三种——「方法没匹配上」（可以 `require = 0` 降级成「这项不补」）、「类转换时解析不到类名」（整个模组加载失败，`require = 0` 毫无用处），以及 r12 学到的最阴险的一种：「挂钩钉对了，但目标方法体半路抛异常，TAIL 永远执行不到」——JEI 把插件异常吞掉记日志，表面上什么都不发生。要接管一个不可靠的方法，就得站在它进门口（HEAD）取消原方法自己重放，而不是等它走到出口（TAIL）。**
 

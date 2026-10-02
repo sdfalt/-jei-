@@ -201,6 +201,16 @@ import org.slf4j.Logger;
  * 现改大写 {@code CLIENT}，依赖语义与 r40 设计意图一致；根因与逐字段解析方式存
  * {@code tools/ground-truth/loader-4.0.42-modinfo-enum-parsing-javap.txt}，
  * {@code tools/check_mod_metadata.py} 同步升级为对所有 side/ordering 值逐字节断言枚举常量名。
+ * r46 适配 GTM 快照 d2ef26f（maven build 101；修复逻辑一字未动）：拿该构建真 jar
+ * （16,801,266 字节，jar 内 toml 自报 version="8.0.0-SNAPSHOT+d2ef26f"）全量 javap 复核——
+ * 19 个 GTM 钉点类（r43 段里「22 个」系枚举计数笔误，钉点清单实际 19 项，本轮起按实数标注）
+ * 与内嵌 ModularUI 的 15 个钉点类，输出与 3a1493f（build 100）真值存档逐行 diff 为空、零漂移；
+ * 两快照间唯一提交 d2ef26f 只改 api/multiblock/Predicates.java（+2/-1，#5485 machines
+ * predicate 的 nonnull 过滤），本模组不引用该类与该包（源码全量 grep 零命中），接触面零交集。
+ * {@code CategoryIcon$JeiCallWrapper.getRenderable} 两条重载在 build 101 的 offset 0 仍是裸
+ * {@code invokestatic GTJEIPlugin.getRuntime}，崩溃链原样存在，五项修复一个都不能少（真值：
+ * gtceu-8.0.0-snapshot.javap.txt 头部重建为 build 101、正文逐行未变；新增
+ * modularui-nested-in-gtceu-d2ef26f.javap.txt，并给内嵌 jar 记了 sha256 指纹）。
  */
 @Mod(GtmJeiStartupFix.MOD_ID)
 public final class GtmJeiStartupFix {

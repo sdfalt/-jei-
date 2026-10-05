@@ -211,6 +211,20 @@ import org.slf4j.Logger;
  * {@code invokestatic GTJEIPlugin.getRuntime}，崩溃链原样存在，五项修复一个都不能少（真值：
  * gtceu-8.0.0-snapshot.javap.txt 头部重建为 build 101、正文逐行未变；新增
  * modularui-nested-in-gtceu-d2ef26f.javap.txt，并给内嵌 jar 记了 sha256 指纹）。
+ * r47 适配 GTM 快照 e297c53（maven build 103；修复逻辑一字未动）：拿该构建真 jar
+ * （16,801,160 字节，sha256 1f37982b…be7647，jar 内 toml 自报 version="8.0.0-SNAPSHOT+e297c53"）
+ * 全量 javap 复核——19 个 GTM 钉点类与内嵌 ModularUI 的 15 个钉点类，输出与 d2ef26f（build 101）
+ * 真值存档逐行 diff 为空、零漂移（内嵌 modularui jar 与 build 101 <b>sha256 逐字节相同</b>：
+ * 1,798,556 字节、57bd7acc…8a3b29，MUI 侧零漂移是字节级事实而非仅成员比对）；
+ * d2ef26f→e297c53 上游共 2 个提交 2 个文件——common/mui/GTMultiblockTextUtil.java（+6/-6，
+ * #5456 机器 UI 输出行溢出修复）与 common/item/tool/behavior/TorchPlaceBehavior.java（+0/-4，
+ * #5466 锤子右键放火把修复），本模组源码不引用这两个类与所在包（全量 grep 零命中，二者均不在
+ * 钉点清单内），接触面零交集。{@code CategoryIcon$JeiCallWrapper.getRenderable} 两条重载在
+ * build 103 的 offset 0 仍是裸 {@code invokestatic GTJEIPlugin.getRuntime}（javap -c 确证），
+ * 崩溃链原样存在，五项修复一个都不能少；源码出现的 24 个格雷/MUI 类名串在 build 103 逐个校验
+ * 存在性，唯三 MISS 仍是既有有意反证（JeiDiagnostics 试探的旧包名候选、GtRegistrationBackfill
+ * 的包名前缀常量、查无此类的 WidgetNode）。真值：gtceu-8.0.0-snapshot.javap.txt 头部重建为
+ * build 103（正文逐行未变）、新增 modularui-nested-in-gtceu-e297c53.javap.txt（与 d2ef26f 版逐行一致）。
  */
 @Mod(GtmJeiStartupFix.MOD_ID)
 public final class GtmJeiStartupFix {

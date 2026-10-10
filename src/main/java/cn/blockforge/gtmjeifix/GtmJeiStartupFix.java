@@ -9,7 +9,7 @@ import net.neoforged.neoforge.common.NeoForge;
 import org.slf4j.Logger;
 
 /**
- * GTM (GregTech: CEu Modern) 8.0.0-SNAPSHOT 启动崩溃修复 —— r45。
+ * GTM (GregTech: CEu Modern) 8.0.0-SNAPSHOT 启动崩溃修复 —— r51。
  *
  * <p><b>崩溃链（原文报错 {@code Cannot invoke "mezz.jei.api.runtime.IJeiRuntime.getJeiHelpers()"
  * because the return of "...GTJEIPlugin.getRuntime()" is null}）</b>：
@@ -211,20 +211,31 @@ import org.slf4j.Logger;
  * {@code invokestatic GTJEIPlugin.getRuntime}，崩溃链原样存在，五项修复一个都不能少（真值：
  * gtceu-8.0.0-snapshot.javap.txt 头部重建为 build 101、正文逐行未变；新增
  * modularui-nested-in-gtceu-d2ef26f.javap.txt，并给内嵌 jar 记了 sha256 指纹）。
- * r47 适配 GTM 快照 e297c53（maven build 103；修复逻辑一字未动）：拿该构建真 jar
- * （16,801,160 字节，sha256 1f37982b…be7647，jar 内 toml 自报 version="8.0.0-SNAPSHOT+e297c53"）
- * 全量 javap 复核——19 个 GTM 钉点类与内嵌 ModularUI 的 15 个钉点类，输出与 d2ef26f（build 101）
- * 真值存档逐行 diff 为空、零漂移（内嵌 modularui jar 与 build 101 <b>sha256 逐字节相同</b>：
- * 1,798,556 字节、57bd7acc…8a3b29，MUI 侧零漂移是字节级事实而非仅成员比对）；
- * d2ef26f→e297c53 上游共 2 个提交 2 个文件——common/mui/GTMultiblockTextUtil.java（+6/-6，
- * #5456 机器 UI 输出行溢出修复）与 common/item/tool/behavior/TorchPlaceBehavior.java（+0/-4，
- * #5466 锤子右键放火把修复），本模组源码不引用这两个类与所在包（全量 grep 零命中，二者均不在
- * 钉点清单内），接触面零交集。{@code CategoryIcon$JeiCallWrapper.getRenderable} 两条重载在
- * build 103 的 offset 0 仍是裸 {@code invokestatic GTJEIPlugin.getRuntime}（javap -c 确证），
- * 崩溃链原样存在，五项修复一个都不能少；源码出现的 24 个格雷/MUI 类名串在 build 103 逐个校验
- * 存在性，唯三 MISS 仍是既有有意反证（JeiDiagnostics 试探的旧包名候选、GtRegistrationBackfill
- * 的包名前缀常量、查无此类的 WidgetNode）。真值：gtceu-8.0.0-snapshot.javap.txt 头部重建为
- * build 103（正文逐行未变）、新增 modularui-nested-in-gtceu-e297c53.javap.txt（与 d2ef26f 版逐行一致）。
+ * r47 适配 GTM 快照 e297c53（maven build 103；历史核对记录）：上一版已确认全部钉点零漂移。
+ * r48 适配 GTM 快照 4a05735（Maven build 104；修复逻辑一字未动）：官方 jar 16,847,735
+ * 字节，jar 内 toml 自报 version="8.0.0-SNAPSHOT+4a05735"，SHA-256 为
+ * b07125188cecd410b834e2365cdcaa03c17e2f1056e0338229b844c9dcd5abb8。全量 javap 复核 19 个
+ * GTM 钉点类与内嵌 ModularUI 的 15 个钉点类，七条挂钩和全部反射成员均与上一版一致；内嵌
+ * modularui-mc1.21.1-3.3.1-SNAPSHOT.jar 仍为 1,798,556 字节，SHA-256
+ * 57bd7acc89ec7b472150630c6409093d8058476c567c66aace6eae2b7b8a3b29，逐字节未变。
+ * {@code CategoryIcon$JeiCallWrapper.getRenderable} 两条重载在 build 104 的 offset 0 仍是裸
+ * {@code invokestatic GTJEIPlugin.getRuntime}（javap -c 确证），启动崩溃链仍存在，五项修复一个
+ * 都不能少；本轮只升级核对凭据，不改运行逻辑。真值摘要见 tools/ground-truth/，上一版完整
+ * 成员存档与本轮逐项 javap 结果一致。
+ * r50 适配 GTM 最新快照 4157773（Maven build 106；2026-10-07）：上游从 4a05735 到本版
+ * 只改配方/材料数据、AE2 机器定义、流体存储工具提示与量子罐存档，不触及本模组接触的类。
+ * build 106 真 jar 的 19 个 GTM 钉点类、内嵌 ModularUI 的 15 个钉点类和七条挂钩逐条 javap
+ * 复核；CategoryIcon 抢跑 getRuntime() 仍在，五项修复继续全部需要。
+ * r51 适配 GTM 最新快照 d208a65（Maven build 109；2026-10-09）：本版是格雷的大合并
+ * 「Port 1.20 to 1.21, September edition (#5477)」等 19 个提交 85 个文件（多方块谓词体系
+ * 重构、程序电路 -1/0 语义、磁化金萝卜与易腐食物、数据组件与管道改动等）。逐条比对官方
+ * 文件清单，本模组钉点内仅 config/ConfigHolder.java 被动 1 行注解
+ * （RecipeConfigs.enchantedTools 的 MAIN_MENU→GAME_RESTART），字段与签名都没动，
+ * 本模组也不引用该项。build 109 真 jar（SHA-256 66a81bf5…2b4f3fae，与 Maven 目录
+ * .sha256 一字对上）逐条 javap 复核：GTM 19 个钉点类与 build 106 存档逐行 diff 为空、
+ * 零漂移；内嵌 ModularUI 与 build 106 逐字节相同（1,798,556 字节、
+ * SHA-256 57bd7acc…8a3b29）；CategoryIcon$JeiCallWrapper.getRenderable 两条重载仍从
+ * offset 0 裸调 GTJEIPlugin.getRuntime()，崩溃链原样存在，五项修复一个都不能少。
  */
 @Mod(GtmJeiStartupFix.MOD_ID)
 public final class GtmJeiStartupFix {

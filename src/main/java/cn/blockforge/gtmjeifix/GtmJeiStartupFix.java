@@ -9,7 +9,7 @@ import net.neoforged.neoforge.common.NeoForge;
 import org.slf4j.Logger;
 
 /**
- * GTM (GregTech: CEu Modern) 8.0.0-SNAPSHOT 启动崩溃修复 —— r51。
+ * GTM (GregTech: CEu Modern) 8.0.0-SNAPSHOT 启动崩溃修复 —— r53（运行逻辑与 r51 / r52 一致）。
  *
  * <p><b>崩溃链（原文报错 {@code Cannot invoke "mezz.jei.api.runtime.IJeiRuntime.getJeiHelpers()"
  * because the return of "...GTJEIPlugin.getRuntime()" is null}）</b>：
@@ -236,6 +236,22 @@ import org.slf4j.Logger;
  * 零漂移；内嵌 ModularUI 与 build 106 逐字节相同（1,798,556 字节、
  * SHA-256 57bd7acc…8a3b29）；CategoryIcon$JeiCallWrapper.getRenderable 两条重载仍从
  * offset 0 裸调 GTJEIPlugin.getRuntime()，崩溃链原样存在，五项修复一个都不能少。
+ * r52 适配 GTM 最新快照 d73adfb（Maven build 115；2026-10-10）：上游 6 个提交、去重 84 个文件
+ * ——多方块可扩展结构的图案构建器（cherry-pick #5500）、{@code GTRecipeType} 一处（#5541
+ * 「XEI 重新显示自定义配方逻辑」）、无线充电器机器与其 13 档电压方块（#5501）、空机器里设程序电路
+ * 那一处（只改 {@code GTMuiWidgets}）、流体与工具提示等一批（cherry-pick #5537/#5531）、
+ * curios 标签转 datagen（#5542）。与本模组钉的 19 个
+ * GTM 类、15 个内嵌 ModularUI 类逐条比对：一个都不在改动清单里（build 109 那轮唯一被动过的
+ * ConfigHolder.java 本轮也没再动），改动涉及的 30 个 Java 类在本模组源码里按类名整词 grep 全部零命中。
+ * build 115 真 jar（16,915,183 字节、SHA-256 647c53c8…d31b39a6，与 Maven 目录 .sha256 一字对上，
+ * jar 内 toml 自报 version="8.0.0-SNAPSHOT+d73adfb"）逐条 javap 复核：GTM 19 个钉点类与 build 109
+ * 存档逐行 diff 为空、零漂移；内嵌 ModularUI 与 build 109 逐字节相同（1,798,556 字节、
+ * SHA-256 57bd7acc…8a3b29，自 build 101 起连续 6 版）；CategoryIcon$JeiCallWrapper.getRenderable
+ * 两条重载仍从 offset 0 裸调 GTJEIPlugin.getRuntime()，崩溃链原样存在，五项修复一个都不能少。
+ * 源码全部 24 个格雷/MUI 类名串在 build 115 上逐个验存在性（21 命中，唯三 MISS 仍是既有有意反证）。
+ * 真值：gtceu-8.0.0-snapshot.javap.txt 头部重建为 build 115、正文逐行未变；新增
+ * modularui-nested-in-gtceu-d73adfb.javap.txt（并顺手更正旧档里「Menu 有 getMenu()」这一处笔误——
+ * 该成员在 AbstractMenuButton 上，本模组对 Menu 只做类型判据与排版链，行为零差异）。
  */
 @Mod(GtmJeiStartupFix.MOD_ID)
 public final class GtmJeiStartupFix {

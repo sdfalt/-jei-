@@ -1,6 +1,6 @@
-# GTM JEI Startup Crash Fix（r51）
+# GTM JEI Startup Crash Fix（r53）
 
-装了这个模组，**GregTech CEu Modern（GTM）8.0.0-SNAPSHOT 在 Minecraft 1.21.1 / NeoForge 上就不会在启动时崩溃，JEI 里也能重新看到格雷配方分类，点开配方页（如搅拌机）也不再必崩**（r17 修复，见版本历程）。**本模组是客户端专用补丁：装在每位玩家的客户端上；服务端不用装、装了也不修任何东西——r40 起「误装到服务端」也不再惹任何麻烦**，来龙去脉见〈服务端要不要装？〉一节。注意：**请用 r45 或更新**——r40~r43 的包有一个元数据笔误（依赖 side 值误写小写），装上客户端会启动即崩，r45 已修好；当前最新 r51 只是把「核过的格雷快照」升到 `+d208a65`，行为与 r50 一字不差。
+装了这个模组，**GregTech CEu Modern（GTM）8.0.0-SNAPSHOT 在 Minecraft 1.21.1 / NeoForge 上就不会在启动时崩溃，JEI 里也能重新看到格雷配方分类，点开配方页（如搅拌机）也不再必崩**（r17 修复，见版本历程）。**本模组是客户端专用补丁：装在每位玩家的客户端上；服务端不用装、装了也不修任何东西——r40 起「误装到服务端」也不再惹任何麻烦**，来龙去脉见〈服务端要不要装？〉一节。注意：**请用 r45 或更新**——r40~r43 的包有一个元数据笔误（依赖 side 值误写小写），装上客户端会启动即崩，r45 已修好；当前最新 r53 是把「核过的格雷快照」升到 `+d73adfb` 之后**真正打出来的那颗 jar**（上一轮 r52 只更新了核对凭据与文字、没有出包，所以 r52 这颗 jar 世上并不存在），运行行为与 r51 一字不差。
 
 适用环境（实测）：
 
@@ -8,16 +8,18 @@
 | --- | --- |
 | Minecraft | 1.21.1 |
 | NeoForge | 21.1.x；依赖下界声明为 **21.1.235**（编译与实测在 21.1.244 / 251） |
-| GregTech CEu Modern（`gtceu`） | 8.0.0-SNAPSHOT（r51 已按**最新快照 `+d208a65`（Maven build 109）**逐条字节码复核；`34f02a6`→`17e1700`→…→`01bda09`→`3a1493f`→`d2ef26f`→`e297c53`→`4a05735`→`4157773`→`d208a65` 全链兼容） |
+| GregTech CEu Modern（`gtceu`） | 8.0.0-SNAPSHOT（r52 核过、r53 沿用同一份凭据的**最新快照 `+d73adfb`（Maven build 115）**逐条字节码复核；`34f02a6`→`17e1700`→…→`01bda09`→`3a1493f`→`d2ef26f`→`e297c53`→`4a05735`→`4157773`→`d208a65`→`d73adfb` 全链兼容） |
 | JEI | 19.x（实测 `19.56.0.441` 与 `19.57.0.448`；r17 起 ModularUI 不兼容崩溃也已修复） |
 
-本模组版本 `1.0.0-r51`，mod id `gtm_jei_startup_fix`，成品是 `build/libs/gtm_jei_startup_fix-1.0.0-r51.jar`。
+本模组版本 `1.0.0-r53`，mod id `gtm_jei_startup_fix`，成品是 `build/libs/gtm_jei_startup_fix-1.0.0-r53.jar`。
+
+r53 只做两件事，**五项修复的运行逻辑与 r51 / r52 一字未动**：① 把上一轮按格雷最新快照 `+d73adfb`（Maven build 115）重做的核对凭据**第一次打进真正的 jar**——r52 那轮只改了说明文字与 javap 存档、没出包，所以装了 `+d73adfb` 的玩家手上最新的可用包就是 r53；② 修好 `README.md` 里两处上一轮编辑留下的排版伤：版本历程表 r52 那一行的结尾误把「这几段经验一句话总结：Mixin 的错要分成三种……」那段的开头吞进了同一个单元格（表格行与正文糊成一行），以及正文里 r46 上面多出一行只有「r46 只做一件事」的残句——两处都按原文拆回 / 删掉，一字未增删。核对凭据沿用 r52 的真值存档（`tools/ground-truth/gtceu-8.0.0-snapshot.javap.txt` 头部为 build 115、`modularui-nested-in-gtceu-d73adfb.javap.txt`），本轮未重新取 jar、未重跑 `javap`；成品 jar 的版本号由构建时统一盖章为 `1.0.0-r53`，`compileJava` 全绿。
+
+r52 只做一件事：**适配格雷最新快照 `+d73adfb`（Maven build 115）**，五项修复与 r51 的所有能力一字未动。d208a65→d73adfb 是 **6 个提交、去重 84 个文件**：多方块可扩展结构的图案构建器（cherry-pick #5500）、`GTRecipeType` 一处（#5541「XEI 重新显示自定义配方逻辑」）、无线充电器机器与其 13 档电压方块（#5501，一个提交就占 49 个文件）、空机器里设程序电路（只改 `GTMuiWidgets`）、流体与工具提示等一批（cherry-pick #5537/#5531，含格雷自己的 EMI/JEI mixin 与 `gtceu.mixins.json`）、curios 标签转 datagen（#5542）——与官方逐提交文件清单逐条比对，**本模组钉的 19 个 GTM 类一个都不在里面**（上一版 r51 唯一被动过的 `ConfigHolder.java` 这轮也没再动），改动涉及的 30 个 Java 类在本模组源码里按类名整词搜索全部零命中。随后从格雷官方 Maven 取到 build 115 真 jar（16,915,183 字节，SHA-256 `647c53c8…d31b39a6`，与目录 `.sha256` 一字对上，jar 内自报 `8.0.0-SNAPSHOT+d73adfb`），逐条 `javap` 复核七条 Mixin 挂钩、19 个 GTM 钉点类与内嵌 ModularUI 的 15 个钉点类：GTM 侧与 build 109 存档**逐行 diff 为空、零漂移**，内嵌 ModularUI **逐字节相同**（1,798,556 字节，自 build 101 起连续 6 版没变过）。`CategoryIcon$JeiCallWrapper.getRenderable` 两条重载的第一条指令仍裸调 `GTJEIPlugin.getRuntime()`，启动崩溃链仍存在，五项修复继续全部需要；本轮没有改运行逻辑，只更新核对凭据与说明（**这一轮没有打出 jar**，同一份凭据随 r53 一起交付）。
 
 r51 只做一件事：**适配格雷最新快照 `+d208a65`（Maven build 109）**，五项修复与 r50 的所有能力一字未动。4157773→d208a65 是格雷的大合并「Port 1.20 to 1.21, September edition (#5477)」等 **19 个提交、85 个文件**（多方块谓词体系重构、程序电路 -1/0 语义、磁化金萝卜与易腐食物、数据组件与管道改动等）——与官方逐提交文件清单逐条比对，本模组的钉点里只有 `ConfigHolder.java` 被动了 **1 行注解**（`RecipeConfigs.enchantedTools` 的重启限制从 MAIN_MENU 改成 GAME_RESTART，字段与签名都没动，本模组也不引用该项）。随后从格雷官方 Maven 取到 build 109 真 jar（16,885,779 字节，SHA-256 `66a81bf5…2b4f3fae`，与目录 `.sha256` 一字对上，jar 内自报 `8.0.0-SNAPSHOT+d208a65`），逐条 `javap` 复核七条 Mixin 挂钩、19 个 GTM 钉点类与内嵌 ModularUI 的 15 个钉点类：GTM 侧与 build 106 存档**逐行 diff 为空、零漂移**，内嵌 ModularUI **逐字节相同**（自 build 101 起连续 5 版）。`CategoryIcon$JeiCallWrapper.getRenderable` 两条重载的第一条指令仍裸调 `GTJEIPlugin.getRuntime()`，启动崩溃链仍存在，五项修复继续全部需要；本轮没有改运行逻辑，只更新核对凭据与说明。
 
 r50 只做一件事：**适配格雷最新快照 `+4157773`（Maven build 106）**，五项修复与 r49 的所有能力一字未动。4a05735→4157773 之间的官方上游改动只涉及配方/材料数据、AE2 机器定义、流体存储工具提示和量子罐存档；本模组不引用这些类。随后从格雷官方 Maven 取到 build 106 真 jar，逐条 `javap` 复核七条 Mixin 挂钩、19 个 GTM 钉点类与内嵌 ModularUI 的 15 个钉点类，目标签名全部仍在。`CategoryIcon$JeiCallWrapper.getRenderable` 两条重载的第一条指令仍裸调 `GTJEIPlugin.getRuntime()`，启动崩溃链仍存在，五项修复继续全部需要；本轮没有改运行逻辑，只更新核对凭据与说明。
-
-r46 只做一件事
 
 r46 只做一件事：**适配格雷最新快照 `+d2ef26f`（maven build 101）**，五项修复与 r45 的所有能力一字未动。从格雷官方 maven 取到该构建真 jar（16,801,266 字节，内嵌 `neoforge.mods.toml` 自报 `version = "8.0.0-SNAPSHOT+d2ef26f"`，sha256 `d24ae3fa…aa0d7`），把七条 mixin 挂钩与全部反射钉点重新逐条 `javap`：GTM 侧 19 个钉点类、格雷内嵌 ModularUI 的15 个钉点类，输出与 `+3a1493f`（build 100）真值存档**逐行 diff 为空、零漂移**（顺带更正一处笔误：r43 文字写的「22 个钉点类」，其列举与 javap 存档实际都是 19 项，本轮起按实数标注）；`3a1493f→d2ef26f` 上游只有 **1 个提交改 1 个文件**——`api/multiblock/Predicates.java`（+2/-1，#5485「fix machines predicate not having a nonnull filter」），本模组源码不引用该类也不引用 `api.multiblock` 包（全量 grep 零命中），接触面零交集（官方 compare 全量清单核对）。崩溃链在 build 101 里**原样存在**——`CategoryIcon$JeiCallWrapper.getRenderable` 两条重载的第一条指令仍是裸的 `invokestatic GTJEIPlugin.getRuntime()`（`javap -c` 确证），一个修复都不能少。真值存档：`tools/ground-truth/gtceu-8.0.0-snapshot.javap.txt` 头部重建为 build 101（正文逐行未变），新增 `tools/ground-truth/modularui-nested-in-gtceu-d2ef26f.javap.txt`（与 3a1493f 内嵌件逐行一致，并首次为内嵌 jar 记 sha256 指纹）。
 
@@ -281,8 +283,8 @@ r31 把 r28/r30 那条「实在放不下就往屏幕边贴」的兜底**整条�
 
 ## 安装
 
-1. 把 `build/libs/gtm_jei_startup_fix-1.0.0-r51.jar` 放进**客户端**的 `mods` 文件夹。
-2. **删掉所有旧的同名 jar**（r1 ~ r43，尤其注意 r40~r43 这三份在客户端**启动即崩**、必须换 r45；以及 r28/r30 那两份带弹出菜单摆法的）：多个版本会同时打补丁，行为不确定。
+1. 把 `build/libs/gtm_jei_startup_fix-1.0.0-r53.jar` 放进**客户端**的 `mods` 文件夹。
+2. **删掉所有旧的同名 jar**（手上有的话就是 r1 ~ r51——r52 那一轮没有出包，所以你不可能装到它；尤其注意 r40~r43 这三份在客户端**启动即崩**、必须换 r45；以及 r28/r30 那两份带弹出菜单摆法的）：多个版本会同时打补丁，行为不确定。
    r36 起这一步模组自己会盯着——`mods` 里发现多份时会提醒你把旧的删掉。
 
 本模组把 `gtceu` 与 `jei` 声明为**客户端侧**必需依赖（`neoforge.mods.toml`，r45 起为
@@ -474,7 +476,7 @@ NeoForge 21.1 的加载顺序是「构造模组 → 加载配置 → 注册 → 
 - 事实依据放在 `tools/ground-truth/` 的几份 javap 摘要里（哪份来自哪个 jar、哪个版本，都写在文件头）：
   - `gtceu-8.0.0-snapshot.javap.txt`：与实装同一构建的 GTM 快照（r39 起重建为 `+01bda09` / maven build 96；
     r43 再重建为 `+3a1493f` / maven build 100；r46 再重建为 `+d2ef26f` / maven build 101；r47 再重建为
-    `+e297c53` / maven build 103；r48 再核对 `+4a05735` / Maven build 104；r50 再核对 `+4157773` / Maven build 106；r51 再核对 `+d208a65` / Maven build 109——文件头写明每轮核对结论与 jar 的 SHA-256）；
+    `+e297c53` / maven build 103；r48 再核对 `+4a05735` / Maven build 104；r50 再核对 `+4157773` / Maven build 106；r51 再核对 `+d208a65` / Maven build 109；r52 再核对 `+d73adfb` / Maven build 115（r53 沿用这份凭据，未重新取 jar、未重跑 `javap`）——文件头写明每轮核对结论与 jar 的 SHA-256）；
   - `modularui-nested-in-gtceu-01bda09.javap.txt`：格雷 jar 内嵌的 ModularUI 3.3.1-SNAPSHOT 字节码
     （r39 新增——muicompat 三条挂钩与 MenuKeepOnScreen 反射链自此有了运行时同款确证）；
   - `modularui-nested-in-gtceu-3a1493f.javap.txt`：同一内嵌件在 build 100 里的复核存档（r43 新增，
@@ -487,6 +489,9 @@ NeoForge 21.1 的加载顺序是「构造模组 → 加载配置 → 注册 → 
     106 里的复核存档（r48 / r50 新增，内嵌 jar 本体与 build 101 起逐字节相同）；
   - `modularui-nested-in-gtceu-d208a65.javap.txt`：同一内嵌件在 Maven build 109 里的复核存档（r51 新增，
     内嵌 jar 本体与 build 101 起连续 5 版逐字节相同，15 个钉点类成员无漂移）；
+  - `modularui-nested-in-gtceu-d73adfb.javap.txt`：同一内嵌件在 Maven build 115 里的复核存档（r52 新增，
+    内嵌 jar 本体与 build 109 逐字节相同、自 build 101 起连续 6 版；15 个钉点类成员无漂移，
+    并把旧档里「`Menu` 声明 `getMenu()`」这一处笔误按实况更正——该成员在 `AbstractMenuButton` 上）；
   - `server-side-noop-javap.txt`：「五项毛病在专用服务端上物理不可能触发」与
     「依赖按物理侧过滤、进服按通道协商」的字节码依据（r40 新增——CategoryIcon 构造的
     `isClientSide` 早退、JEI 插件加载的 `Dist.isClient` 闸门、FML `DependencySide#isCorrectSide`、
@@ -532,6 +537,8 @@ NeoForge 21.1 的加载顺序是「构造模组 → 加载配置 → 注册 → 
 | r49 | **适配格雷快照 `+4a05735`（Maven build 104），五项修复与所有能力一字未动**：官方 jar 16,847,735 字节，SHA-256 `b07125188cecd410b834e2365cdcaa03c17e2f1056e0338229b844c9dcd5abb8`，内嵌 ModularUI 仍为 1,798,556 字节、SHA-256 `57bd7acc…8a3b29`；GTM 19 个钉点类、ModularUI 15 个钉点类逐条 `javap` 全部零漂移，七条挂钩与反射成员无需改动；`CategoryIcon$JeiCallWrapper.getRenderable` 两条重载在 build 104 仍从 offset 0 裸调 `GTJEIPlugin.getRuntime()`，启动崩溃链仍存在，五项修复继续全部需要。上一版 r47 的完整历史记录仍保留在下方提交记录中。| 装了 4a05735 的玩家换上 r49 即可；本轮只更新快照核对凭据，运行逻辑与 r47 一字不差 |
 | r50 | **适配格雷最新快照 `+4157773`（Maven build 106），五项修复与所有能力一字未动**：4a05735→4157773 上游共 2 个提交——`b955bb8`「Cherry Pick Rare Earth Line + ME Part Changes (#5519)」（材料/配方数据与 AE2 机器定义等 17 个文件）与 `4157773`「fix fluid storage tooltips & quantum tanks not saving data (#5508)」（`GTMachines`/`GTMachineUtils`/`QuantumTankMachine` 共 3 个文件）；本模组不引用这些类（源码全量 grep 零命中），接触面零交集（官方逐提交文件清单核对）。从格雷官方 Maven 取到 build 106 真 jar（16,849,622 字节，SHA-256 `df1d305a6da159adf0e70491cab67c829f6e7e223f10fc633d3096198f38d24a`，与目录 .sha256 一字对上），GTM 19 个钉点类与内嵌 ModularUI 15 个钉点类逐条 `javap` 复核——与 build 104 真值存档逐项一致、零漂移；`CategoryIcon$JeiCallWrapper.getRenderable` 两条重载在 build 106 仍从 offset 0 裸调 `GTJEIPlugin.getRuntime()`，崩溃链原样存在，五项修复一个都不能少。真值：`gtceu-8.0.0-snapshot.javap.txt` 头部重建为 build 106，新增 `modularui-nested-in-gtceu-4157773.javap.txt` | 装了 4157773 的玩家换上 r50 即可；本轮只更新快照核对凭据，运行逻辑与 r49 一字不差 |
 | r51 | **适配格雷最新快照 `+d208a65`（Maven build 109），五项修复与所有能力一字未动**：4157773→d208a65 是格雷的大合并「Port 1.20 to 1.21, September edition (#5477)」等 **19 个提交、85 个文件**（多方块谓词体系重构、程序电路 -1/0 语义、磁化金萝卜与易腐食物、数据组件与管道改动等）。与官方逐提交文件清单逐条比对，本模组钉点内仅 `config/ConfigHolder.java` 被动 1 行——`RecipeConfigs.enchantedTools` 的注解值 `MAIN_MENU`→`GAME_RESTART`，字段与方法签名都没动，本模组也不引用该项（全源码 grep 零命中）。从格雷官方 Maven 取到 build 109 真 jar（16,885,779 字节，SHA-256 `66a81bf552282366e81810d180b3c295b9b21ef8cd78aab5eebb147e2b4f3fae`，与目录 .sha256 一字对上，jar 内自报 `8.0.0-SNAPSHOT+d208a65`），GTM 19 个钉点类逐条 `javap` 与 build 106 存档**逐行 diff 为空、零漂移**；内嵌 ModularUI 与 build 106 **逐字节相同**（1,798,556 字节、SHA-256 `57bd7acc…8a3b29`，自 build 101 起连续 5 版）；`CategoryIcon$JeiCallWrapper.getRenderable` 两条重载在 build 109 仍从 offset 0 裸调 `GTJEIPlugin.getRuntime()`，崩溃链原样存在，五项修复一个都不能少。源码全部格雷/MUI 类名串在 build 109 逐个验存在性，唯三 MISS 仍是既有有意反证（旧包名候选、包名前缀常量、查无此类的 `WidgetNode`）。真值：`gtceu-8.0.0-snapshot.javap.txt` 头部重建为 build 109，新增 `modularui-nested-in-gtceu-d208a65.javap.txt` | 装了 d208a65 的玩家换上 r51 即可；本轮只更新快照核对凭据，运行逻辑与 r50 一字不差 |
+| r52 | **适配格雷最新快照 `+d73adfb`（Maven build 115），五项修复与所有能力一字未动**：d208a65→d73adfb 共 **6 个提交、去重 84 个文件**——`8901ec60`「Cherry Pick #5500 (#5539)」多方块可扩展结构图案构建器（6 文件，新增 `PatternBuilderUtils`）、`223ccf7a`「Fix XEI's to display custom recipe logic again (#5541)」只改 `api/recipe/GTRecipeType.java`（与本模组钉的 `api/recipe/GTRecipe` 是两个类）、`2d44bb7a`「Wireless Chargers. (#5501)」无线充电器机器＋13 档电压方块（49 文件，Java 侧只碰 `GTMachines`/`LangHandler`/`MetaTileEntityLoader`）、`9e79187c`「Fix Setting Programmed circuits in empty machine」只改 `common/mui/GTMuiWidgets.java`、`ce6d17f9`「Cherry Pick #5537 #5531 (#5538)」流体/工具提示/格雷自己的 EMI 与 JEI mixin（23 文件）、`d73adfb4`「Moved curios tags into datagen (#5542)」标签搬家（6 文件）。与官方逐提交文件清单逐条比对，**本模组 19 个 GTM 钉点类一个都没被碰过**（上一轮 r51 唯一被动过的 `config/ConfigHolder.java` 本轮不在清单里），改动涉及的 30 个 Java 类在本模组源码里按类名整词 grep 全部零命中。从格雷官方 Maven 取到 build 115 真 jar（16,915,183 字节，SHA-256 `647c53c83faead28470cbb299472aea604254c20bcc5fb3cda1612e8d31b39a6`，与目录 .sha256 一字对上，jar 内自报 `8.0.0-SNAPSHOT+d73adfb`，其 toml 仍要求 `jei>=19.25.1.328`），GTM 19 个钉点类逐条 `javap` 与 build 109 存档**逐行 diff 为空、零漂移**；内嵌 ModularUI 与 build 109 **逐字节相同**（1,798,556 字节、SHA-256 `57bd7acc…8a3b29`，自 build 101 起连续 6 版）；`CategoryIcon$JeiCallWrapper.getRenderable` 两条重载在 build 115 仍从 offset 0 裸调 `GTJEIPlugin.getRuntime()`，崩溃链原样存在，五项修复一个都不能少。源码 24 个格雷/MUI 类名串在 build 115 逐个验存在性（21 命中，唯三 MISS 仍是既有有意反证：旧包名候选、包名前缀常量、查无此类的 `WidgetNode`）；老包装类 `ProgrammedCircuitJeiCategory$GTProgrammedCircuitWrapper` 依旧查无此类，代码本就走 catch 退回 `new Object()`。真值：`gtceu-8.0.0-snapshot.javap.txt` 头部重建为 build 115（正文逐行未变），新增 `modularui-nested-in-gtceu-d73adfb.javap.txt`（顺手更正旧档「`Menu` 声明 `getMenu()`」的笔误——该成员在 `AbstractMenuButton` 上，本模组对 `Menu` 只做类型判据与排版链，行为零差异） | 装了 d73adfb 的玩家换上 r52 即可；本轮只更新快照核对凭据，运行逻辑与 r51 一字不差 |
+| r53 | **把 `+d73adfb` 兼容第一次打成可用的 jar，并修好 README 的两处排版伤；五项修复的运行逻辑与 r51 / r52 一字未动**：上一轮 r52 只更新了核对凭据与说明文字、**没有打出包**（`build/libs/` 里当时只到 r51），所以装了 `+d73adfb` 的玩家需要的是 r53。本轮改动全在文档与打包：① 版本历程表 r52 那行的单元格结尾误接了正文段落「这几段经验一句话总结：**Mixin 的错要分成三种……**」的开头，两者糊成同一行——已按原文拆回；② 正文 r46 段落上面残留一行只有「r46 只做一件事」的残句——已删。核对凭据沿用 r52 存档（`gtceu-8.0.0-snapshot.javap.txt` 头部为 Maven build 115、`modularui-nested-in-gtceu-d73adfb.javap.txt` 记内嵌 ModularUI 1,798,556 字节与 SHA-256 `57bd7acc…8a3b29`），本轮未重新取格雷 jar、未重跑 `javap`；源码侧只把主类注释头里的 r 号从 r52 就地改成 r53（同一行内改字、行数不变，注释不进字节码，所以这颗 jar 与当前源码完全一致，编译后 type-check 也再过了一遍）。`mod_version` 由 `1.0.0-r52` 升到 `1.0.0-r53`，构建全绿，产出 `build/libs/gtm_jei_startup_fix-1.0.0-r53.jar` | 装了 `+d73adfb` 的玩家换上 r53 即可（这就是第一颗带 d73adfb 兼容凭据的 jar）；行为与 r51 一字不差 |
 
 这几段经验一句话总结：**Mixin 的错要分成三种——「方法没匹配上」（可以 `require = 0` 降级成「这项不补」）、「类转换时解析不到类名」（整个模组加载失败，`require = 0` 毫无用处），以及 r12 学到的最阴险的一种：「挂钩钉对了，但目标方法体半路抛异常，TAIL 永远执行不到」——JEI 把插件异常吞掉记日志，表面上什么都不发生。要接管一个不可靠的方法，就得站在它进门口（HEAD）取消原方法自己重放，而不是等它走到出口（TAIL）。**
 

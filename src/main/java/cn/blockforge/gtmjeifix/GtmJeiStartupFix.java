@@ -9,7 +9,7 @@ import net.neoforged.neoforge.common.NeoForge;
 import org.slf4j.Logger;
 
 /**
- * GTM (GregTech: CEu Modern) 8.0.0-SNAPSHOT 启动崩溃修复 —— r53（运行逻辑与 r51 / r52 一致）。
+ * GTM (GregTech: CEu Modern) 8.0.0-SNAPSHOT 启动崩溃修复 —— r55（运行逻辑与 r51 / r52 / r53 一致）。
  *
  * <p><b>崩溃链（原文报错 {@code Cannot invoke "mezz.jei.api.runtime.IJeiRuntime.getJeiHelpers()"
  * because the return of "...GTJEIPlugin.getRuntime()" is null}）</b>：
@@ -252,6 +252,27 @@ import org.slf4j.Logger;
  * 真值：gtceu-8.0.0-snapshot.javap.txt 头部重建为 build 115、正文逐行未变；新增
  * modularui-nested-in-gtceu-d73adfb.javap.txt（并顺手更正旧档里「Menu 有 getMenu()」这一处笔误——
  * 该成员在 AbstractMenuButton 上，本模组对 Menu 只做类型判据与排版链，行为零差异）。
+ * r55 适配 GTM 最新快照 36a6b38（Maven build 124；2026-10-17）：上游 10 个提交、去重 22 个文件
+ * ——两份 lang 翻译、堆叠标签过滤器防「量子纠缠」（#5486，9 文件）、旋转炉贴图两处、
+ * GT 矿石幸运掉落的可选配置（#5552：ConfigHolder.GameplayConfigs **纯新增**一个布尔字段
+ * enableOreFortune=false，无删改；本模组反射只读 compat.hideOreProcessingDiagrams 与
+ * machines.doBedrockOres 两个键，与该字段零交集）、Spooler/Welder/HSS-E 配方补漏、
+ * isStackDataItem 误判、维护仓 UI 文本、AE2 染色喷壶色序。与本模组钉的 19 个 GTM 类逐条比对，
+ * 唯一被动的是 ConfigHolder.java（如上，纯新增），其余 Java 改动类在本模组源码里按类名整词
+ * grep 全部零命中。build 124 真 jar（16,919,208 字节、SHA-256 057f8e97…031a1011，与 Maven 目录
+ * .sha256 一字对上，jar 内 toml 自报 version="8.0.0-SNAPSHOT+36a6b38"）逐条 javap 复核：GTM 19 个
+ * 钉点类与 build 115 存档逐行 diff 为空、零漂移；CategoryIcon$JeiCallWrapper.getRenderable 两条
+ * 重载仍从 offset 0 裸调 GTJEIPlugin.getRuntime()，崩溃链原样存在，五项修复一个都不能少。
+ * ★ 本轮唯一值得警惕的事：内嵌 ModularUI 自 build 101 起连续 6 版逐字节相同之后**第一次换件**
+ * （格雷依赖声明未动、上游浮动快照重发；1,798,556→1,798,708 字节、SHA-256 57bd7acc…→2774f7c7…）。
+ * 与 build 115 内嵌件做 899 条目逐项 diff：class 计数 757 不变，仅 7 个类有变（ModularUIConfig
+ * 两件套、TextureRegistry、BaseSchemaRenderer 及其三内部类），**无一在钉点上**；15 个 MUI 钉点类
+ * 两版 javap -p 逐行一致，三个 Mixin 锚点与反射链成员按精确描述符全命中；被改的
+ * BaseSchemaRenderer.draw 仍恰好一处调 Viewport.calculateOpenGLViewportFromRectangle(IIII)V，
+ * 本模组挂在该被调方法入口、偏移量运行时实测，不受调用方内部改动影响。真值：
+ * gtceu-8.0.0-snapshot.javap.txt 头部重建为 build 124、正文逐行未变；新增
+ * modularui-nested-in-gtceu-36a6b38.javap.txt（含换件逐条目 diff 与钉点复核全记录）。
+ * 修复逻辑一字未动，版本号照升并出包交付。
  */
 @Mod(GtmJeiStartupFix.MOD_ID)
 public final class GtmJeiStartupFix {

@@ -27,7 +27,7 @@ import java.util.List;
  * 三个名字（{@code CAP} 静态字段、{@code getInputContents/getOutputContents}、
  * {@code mapIngredientToEntryList}、{@code getStacks}）都已用与用户同一构建的
  * {@code gtceu-1.21.1-8.0.0-SNAPSHOT+20260916} 的 class 文件核对过；
- * r39 再对 {@code +01bda09}（maven build 96）复核，之后在 r48 的 {@code +4a05735}（Maven build 104）、r50 的 {@code +4157773}（Maven build 106）、r51 的 {@code +d208a65}（Maven build 109）、r52 的 {@code +d73adfb}（Maven build 115）、r55 的 {@code +36a6b38}（Maven build 124，内嵌 MUI 本轮换件后重验）再次确认：四个名字与内嵌 MUI 的
+ * r39 再对 {@code +01bda09}（maven build 96）复核，之后在 r48 的 {@code +4a05735}（Maven build 104）、r50 的 {@code +4157773}（Maven build 106）、r51 的 {@code +d208a65}（Maven build 109）、r52 的 {@code +d73adfb}（Maven build 115）、r55 的 {@code +36a6b38}（Maven build 124，内嵌 MUI 本轮换件后重验）、r57 的 {@code +c72e0cf}（Maven build 126，内嵌 MUI 与 124 逐字节相同）再次确认：四个名字与内嵌 MUI 的
  * {@code ItemEntryList/FluidEntryList.getStacks()} 依旧一字未变。
  *
  * <p>取不到的一律返回空集合（页面少摆几格），不抛异常。元素类型不匹配时会被

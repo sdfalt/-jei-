@@ -9,7 +9,7 @@ import net.neoforged.neoforge.common.NeoForge;
 import org.slf4j.Logger;
 
 /**
- * GTM (GregTech: CEu Modern) 8.0.0-SNAPSHOT 启动崩溃修复 —— r55（运行逻辑与 r51 / r52 / r53 一致）。
+ * GTM (GregTech: CEu Modern) 8.0.0-SNAPSHOT 启动崩溃修复 —— r57（运行逻辑与 r51 / r52 / r53 一致）。
  *
  * <p><b>崩溃链（原文报错 {@code Cannot invoke "mezz.jei.api.runtime.IJeiRuntime.getJeiHelpers()"
  * because the return of "...GTJEIPlugin.getRuntime()" is null}）</b>：
@@ -273,6 +273,22 @@ import org.slf4j.Logger;
  * gtceu-8.0.0-snapshot.javap.txt 头部重建为 build 124、正文逐行未变；新增
  * modularui-nested-in-gtceu-36a6b38.javap.txt（含换件逐条目 diff 与钉点复核全记录）。
  * 修复逻辑一字未动，版本号照升并出包交付。
+ * r57 适配 GTM 最新快照 c72e0cf（Maven build 126；2026-10-24）：上游 5 个提交、去重 377 个文件
+ * ——AOE 配置 UI 层数显示（#5559）、材料注册延迟机制重构（#5414，154 文件）、模块化护甲大改
+ * （#5516，236 文件）、消音器/维护仓/蒸汽排气阀报错显示（13 文件）、机械臂修复（#5581）。
+ * ★ 本轮 GTM 侧出现自 r39 建立真值以来的第一次签名漂移：钉点类 GTRegistries 被 #5414 删掉
+ * 自带的 TO_REGISTER 缓冲表与 register/actuallyRegister/onUnfreeze/onFreeze/init(IEventBus)
+ * 一套内部注册管线（改为空体 init()），#5516 又给它纯新增 ITEM_MODULES 字段。逐条核对：
+ * 本模组对该类的唯一用法是反射读 public static final RECIPE_CATEGORIES，该字段两版签名
+ * 逐字节一致；注册填充在新机制的注册事件阶段完成、远早于 JEI 插件加载，读到的一直是
+ * 填好的注册表，行为零影响。另一被碰钉点 GTBedrockFluidInfoCategory 只是构造器体内
+ * GTMaterials.Oil 取法一行（javap -p 输出与存档逐行一致）。其余 17 个 GTM 钉点类与 build 124
+ * 存档逐行 diff 为空；内嵌 ModularUI 与 build 124 逐字节相同（1,798,708 字节、SHA-256
+ * 2774f7c7…b2606d），15 个 MUI 钉点仍独立重跑 javap 全命中。CategoryIcon$JeiCallWrapper
+ * .getRenderable 两条重载在 build 126 仍从 offset 0 裸调 GTJEIPlugin.getRuntime()，崩溃链
+ * 原样存在，五项修复一个都不能少。真值：gtceu-8.0.0-snapshot.javap.txt 头部重建为 build 126、
+ * 正文 GTRegistries 块按真 jar 重建（本档正文自 r39 以来第一次改动）；新增
+ * modularui-nested-in-gtceu-c72e0cf.javap.txt。修复逻辑一字未动，版本号照升并出包交付。
  */
 @Mod(GtmJeiStartupFix.MOD_ID)
 public final class GtmJeiStartupFix {

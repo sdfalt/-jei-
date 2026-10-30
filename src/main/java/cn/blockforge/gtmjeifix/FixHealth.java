@@ -256,7 +256,7 @@ final class FixHealth {
     private static Item checkMultiblockOffset() {
         if (!FixConfig.multiblockOffsetEnabled()) {
             return new Item("修复④·多方块预览校正", Verdict.OFF_BY_CONFIG,
-                    "已按配置关闭（fixes.enableMultiblockEmbedOffset=false）");
+                    "已按配置关闭（fixes.enableMultiblockEmbedOffset=false；r58 起这就是默认——格雷官方自 36a6b38/build 124 起已修好偏左上（r59 取证确认），属正常状态）");
         }
         if (MultiblockEmbedOffset.isRuntimeDisabled()) {
             return new Item("修复④·多方块预览校正", Verdict.BROKEN,

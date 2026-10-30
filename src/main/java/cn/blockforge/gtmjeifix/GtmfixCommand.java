@@ -109,7 +109,13 @@ public final class GtmfixCommand {
         boolean offset = FixConfig.multiblockOffsetEnabled();
         boolean menu = FixConfig.menuKeepOnScreenEnabled();
         if (crash && backfill && compat && offset && menu) {
-            lines.add("五个修复全开着，与以前的版本行为一致。");
+            lines.add("五个修复全开着——其中多方块预览校正自 r58 起默认是关的，你这台开着，"
+                    + "说明配置里写了 true（d73adfb/build 115 及更早的老快照适用；格雷官方自 36a6b38/build 124 起已修复该问题（r59 取证确认），新版开着图会双重补偿偏右下，建议改回 false）。");
+        } else if (!offset && crash && backfill && compat && menu) {
+            lines.add("其余四个修复全开着，多方块预览校正在按 r58 新默认关闭——格雷官方自快照 36a6b38"
+                    + "（Maven build 124）起已修复该问题，这就是推荐状态；若你的格雷还是 d73adfb/build 115"
+                    + " 及更早、JEI 里 3D 结构图仍偏左上角，"
+                    + "把 fixes.enableMultiblockEmbedOffset 改成 true 再 /gtmfix reload 即可。");
         }
         lines.add("消息与日志：" + FixConfig.describe()
                 + "｜写逐行日志=" + StartupLog.writeSwitchState()

@@ -35,6 +35,11 @@ import org.spongepowered.asm.mixin.injection.ModifyVariable;
  *
  * <p>顺带修好的还有<b>点击拾取</b>：射线拾取（拖拽旋转、点某个方块看它是什么）用的就是同一个视口
  * 矩形做「屏幕坐标 ↔ 世界坐标」换算，视口摆正之后，看到的结构和点到的位置自然对上。
+ *
+ * <p>r58：{@code fixes.enableMultiblockEmbedOffset} 默认关（格雷官方自 build 124 / {@code 36a6b38}
+ * 起已修复偏左上问题，r59 字节码取证确认）。
+ * 这个 Mixin 本体没删——闸门在 {@link MultiblockEmbedOffset#x()}/{@link MultiblockEmbedOffset#y()}：
+ * 开关关着时读到的偏移恒为 0，等于原样透传；{@code d73adfb}/build 115 及更早的老快照把开关拨回 true，校正立刻恢复。
  */
 @Mixin(targets = "brachy.modularui.drawable.schema.Viewport", remap = false)
 public final class MultiblockViewportShiftMixin {

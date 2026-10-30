@@ -107,7 +107,10 @@ import org.slf4j.Logger;
  *
  * <p><b>r34 新增：配置文件扩到四组 + 游戏内命令 {@code /gtmfix}</b>：
  * ① {@code [fixes]} —— 五个修复（启动崩溃 / 格雷分类补注册 / RecipeSlot 字段 /
- *     多方块 3D 预览 / 弹出菜单不出屏）<b>各自一个开关</b>，默认全 true＝行为与 r32 一字不差；
+ *     多方块 3D 预览 / 弹出菜单不出屏）<b>各自一个开关</b>；r34～r57 默认全 true＝行为与 r32 一字不差，
+ *     <b>r58 起修复④（enableMultiblockEmbedOffset）默认改 false</b>——格雷官方自快照
+ *     {@code 36a6b38}（Maven build 124，r59 取证确认）起已修好「JEI 里多方块 3D 结构图偏左上角」，
+ *     新版上开着反而双重补偿；{@code d73adfb}/build 115 及更早改回 true 即恢复校正。
  *     配置到手那一刻会在两份日志里各记一行「[修复开关] 本次哪几个开着、哪几个被关了」。
  * ② {@code /gtmfix status｜reload｜report}（客户端命令，不需要作弊权限）——
  *     看状态、改完配置立刻重读生效、拿报告文件完整路径，详见 {@link GtmfixCommand}。
@@ -289,6 +292,38 @@ import org.slf4j.Logger;
  * 原样存在，五项修复一个都不能少。真值：gtceu-8.0.0-snapshot.javap.txt 头部重建为 build 126、
  * 正文 GTRegistries 块按真 jar 重建（本档正文自 r39 以来第一次改动）；新增
  * modularui-nested-in-gtceu-c72e0cf.javap.txt。修复逻辑一字未动，版本号照升并出包交付。
+ * r58 修复④默认改关（唯一实质变化；不碰任何挂钩与真值链）：格雷官方已在最新快照里
+ * 自己修好「JEI 里多方块 3D 结构图偏左上角」（用户实测确认；r59 进一步取证：官方修复随内嵌
+ * ModularUI 换件进入 build 124 / 36a6b38 起的格雷，故这份校正再开着等于位移补
+ * 两次、图反而偏右下）。FIX_MULTIBLOCK_OFFSET 的默认值由 true 改 false（新常量
+ * DEFAULT_MULTIBLOCK_OFFSET），未修复的老快照（d73adfb / build 115 及更早）把
+ * fixes.enableMultiblockEmbedOffset 改回 true 即完全恢复旧行为。校正本体两条 mixin 一条没删：闸门只在 MultiblockEmbedOffset
+ * x()/y() 出口判开关（关＝偏移恒 0 透传）；捕获端 JeiEmbedWidgetMixin 不受该开关影响、
+ * 照常挂——它的 inside 状态同时是修复⑤ MenuKeepOnScreen 的第二道闸（r31 起）。
+ * 关键防坑（五处文案同步点名）：老配置文件会回填旧值 true，换 r58 的 jar 不会自动改，
+ * 升了已修复的格雷后需手动改回 false——配置文件注释、fixesSummary、/gtmfix status、
+ * 进世界聊天与自检结论都会提醒。本轮未重新取格雷 jar、未重跑 javap。版本号照升并出包交付。
+ * r59 适配 GTM 最新快照 a373c6e（Maven build 133；2026-10-28）：重新取真 jar 做字节码核对。
+ * 官方真 jar 17,162,026 字节、SHA-256 36d6157a…cdebc11f（与 Maven 目录 .sha256 一字对上），
+ * jar 内自报 version="8.0.0-SNAPSHOT+a373c6e"，neoforge.mods.toml 仍要求 jei>=19.25.1.328。
+ * c72e0cf→a373c6e 共 8 个提交、去重 57 个文件（ME 图案缓冲 #5568、MaterialRegistryEntry.value
+ * 修正 #5583、材料图标集 holder 延迟解析 #5584、datagen 危害触发标签 #5586、KubeJS setData
+ * #5588、中央监视器崩溃 #5592、文档 #5458、★#5598「Fix JEI only startup crashing」）——与官方
+ * 逐提交文件清单比对，19 个 GTM 钉点类里唯一被碰的是 CategoryIcon.java（#5598）：官方把
+ * 构造期 eager 调 JeiCallWrapper.getRenderable 改成先存 Either<ResourceLocation,ItemStack>
+ * texture、首次 get() 才延迟解析——正是 r5 起本模组修复①拦的那条启动崩溃路径的官方规避版。
+ * 逐条核对：JeiCallWrapper 两条重载字节码一字未变（offset 0 仍裸调 GTJEIPlugin.getRuntime()），
+ * 修复①的 @Inject 按精确描述符照挂照中；未就绪时官方新代码同样会把我们给的占位图标缓存进
+ * wrappedValue、就绪后自愈，语义与 r17 起的接管链完全一致。其余 18 块与 build 126 存档逐行
+ * diff 为空。内嵌 ModularUI 与 build 124/126 逐字节相同（1,798,708 字节、757 class、SHA-256
+ * 2774f7c7…b2606d），15 个钉点独立重跑全命中。★ 顺带补齐 r58 留的取证空白：另行取回 build 115
+ * 真 jar（16,915,183 字节，与 r52 存档 SHA 一致）对比 BaseSchemaRenderer.draw——旧版按
+ * transformX/transformY＋screenArea 平移算视口矩形，build 124 起改为把矩形两角过
+ * getLastGraphicsPose 的图形矩阵再算 min/floor 与 abs/ceil，即官方修复④随 MUI 换件进入
+ * build 124（36a6b38）；c72e0cf、a373c6e 同件延续，修复④默认关的门槛按 36a6b38 划界写进文案。
+ * 真值：gtceu-8.0.0-snapshot.javap.txt 头部重建为 build 133、正文 CategoryIcon 一块按真 jar
+ * 重建（其余 18 块逐行未变）；新增 modularui-nested-in-gtceu-a373c6e.javap.txt。修复逻辑
+ * 一字未动（仅五处玩家文案改按快照写边界），版本号照升并出包交付。
  */
 @Mod(GtmJeiStartupFix.MOD_ID)
 public final class GtmJeiStartupFix {
@@ -346,7 +381,10 @@ public final class GtmJeiStartupFix {
                 + "（第一次启动由游戏自动生成，删了下次还会重新生成）。r34 起一共四组，注释中英双语："
                 + "① [fixes] 五个修复各自的独立开关（enableStartupCrashFix / enableCategoryBackfill / "
                 + "enableRecipeSlotCompat / enableMultiblockEmbedOffset / enableMenuKeepOnScreen，"
-                + "默认全 true＝行为与以前一字不差；将来官方修好哪个就只关哪个）；"
+                + "前四条与⑤默认 true；④多方块预览校正自 r58 起默认 false——格雷官方自快照 36a6b38"
+                + "（Maven build 124）起已修好「JEI 里 3D 结构图偏左上角」（r59 取证确认），新版上开着反而"
+                + "双重补偿；d73adfb/build 115 及更早仍偏的话把它改回 true。"
+                + "老配置文件会回填旧值 true，升了已修复的格雷后记得手动改回）；"
                 + "② [messages] joinChatReminder（默认 " + FixConfig.DEFAULT_CHAT_REMINDER
                 + "）= 每次进入游戏时聊天栏那几行提醒发不发；"
                 + "③ [logs] startupLogKeep（默认 " + FixConfig.DEFAULT_LOG_KEEP

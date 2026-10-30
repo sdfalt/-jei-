@@ -51,10 +51,26 @@ import org.slf4j.Logger;
  *     {@code ModularScreen.createEmbed}、{@code ModularUIJeiCategory.UIWrapperWidget}、
  *     {@code drawable/schema/BaseSchemaRenderer}、{@code drawable/schema/Viewport}；</li>
  * <li>GTM 8.0.0-SNAPSHOT 官方 sources jar（历史依据 build 95；r39 用 build 96 / {@code +01bda09}，r48 以 build 104 / {@code +4a05735}，r50 再以 build 106 / {@code +4157773}，r51 再以 build 109 / {@code +d208a65}，r52 再以 build 115 / {@code +d73adfb}，r55 再以 build 124 / {@code +36a6b38}（此版内嵌 MUI 换件，{@code BaseSchemaRenderer} 渲染管线内部有变，但 draw 仍恰好一处调用 {@code Viewport.calculateOpenGLViewportFromRectangle(IIII)V}，本节结论不受影响），r57 再以 build 126 / {@code +c72e0cf}（内嵌 MUI 与 build 124 逐字节相同，被调方法及其唯一调用点原样）
- *     复核，本节引用的文件在 95→96 官方 diff 之外，一字未变）：{@code MultiblockInfoJeiCategory}
+ *     复核，本节引用的文件在 95→96 官方 diff 之外，一字未变），r59 再以 build 133 / {@code +a373c6e}
+ *     复核（内嵌 MUI 与 build 124/126 逐字节相同，被调方法及调用点原样；格雷侧唯一被碰的钉点
+ *     CategoryIcon 只改了外层构造时机，本节引用的 {@code MultiblockInfoJeiCategory} 零漂移）：
+ *     {@code MultiblockInfoJeiCategory}
  *     构造 {@code new MultiblockPreviewWidget(v, null, 200, 180)} 与 {@code getMaxWidth/getMaxHeight}；</li>
  * <li>JEI 19.56.0.441 官方 sources jar：{@code mezz/jei/common/gui/} 下的位姿平移＋相对鼠标约定。</li>
  * </ul>
+ *
+ * <h3>r58：开关默认值改为「关」（r59 取证补齐官方修复的确切门槛）</h3>
+ * <p>格雷官方把「JEI 里 3D 结构图偏左上角」自己修好了（用户实测确认；r59 取 build 133 /
+ * {@code a373c6e} 真 jar 并与 build 115 旧内嵌件对比 {@code BaseSchemaRenderer.draw} 字节码取证：
+ * 修复随内嵌 ModularUI 换件进入 <b>build 124 / {@code 36a6b38}</b>——旧版按 transformX/transformY
+ * ＋screenArea 平移算视口矩形，新件改为把矩形两角过 {@code getLastGraphicsPose} 的图形矩阵再算，
+ * 之后 build 126/133 的 {@code c72e0cf}/{@code a373c6e} 都延续这份内嵌件）。官方修好后若继续加这份位移，等于<b>补两次</b>——图会反过来偏右下，
+ * 所以 r58 起 {@code fixes.enableMultiblockEmbedOffset} 默认 {@code false}（见 {@link FixConfig}）。
+ * 校正本体一条代码都没删：未修复的老快照（{@code d73adfb} / build 115 及更早）把它改回 {@code true} 就能用，
+ * 判定只落在 {@link #x()}/{@link #y()} 这两个出口上。
+ * 注意 {@link #push}／{@link #pop}／{@link #isInsideEmbedDraw()} <b>不受该开关影响、照常运行</b>：
+ * {@code MenuKeepOnScreen} 拿 {@code isInsideEmbedDraw()} 当修复⑤的第二道闸（r31 起），
+ * 捕获端一关会把修复⑤的保护一起关掉。
  */
 public final class MultiblockEmbedOffset {
 
@@ -83,6 +99,10 @@ public final class MultiblockEmbedOffset {
 
     /**
      * 进入一次「JEI 里的内嵌界面绘制」：写下这块界面在屏幕上的真实原点（整块覆盖上一次的）。
+     *
+     * <p>⚠ 这里<b>刻意不判 {@code enableMultiblockEmbedOffset}</b>（r58 该项默认关）：
+     * {@code inside} 状态同时是修复⑤ {@code MenuKeepOnScreen} 的第二道闸，捕获端跟着关会把⑤的保护带漏掉。
+     * ④的闸门只在 {@link #x()}/{@link #y()} 出口上判。
      *
      * @param x 原点 X（GUI 缩放坐标，向右为正）
      * @param y 原点 Y（GUI 缩放坐标，向下为正）
@@ -170,20 +190,23 @@ public final class MultiblockEmbedOffset {
         }
     }
 
-    /** 给现场报告 / 聊天摘要用的一行结论（四种情况都覆盖）。 */
+    /** 给现场报告 / 聊天摘要用的一行结论（五种情况都覆盖）。 */
     public static String statusLine() {
         if (!FixConfig.multiblockOffsetEnabled()) {
-            return "多方块预览校正：已按配置关闭（fixes.enableMultiblockEmbedOffset=false）";
+            return "多方块预览校正：关闭（r58 起默认——格雷官方自快照 36a6b38/build 124 起已修好这张 3D 图偏左上角的问题（r59 取证确认）；"
+                    + "更早的快照（d73adfb/build 115 及更早）若仍偏，把 fixes.enableMultiblockEmbedOffset 改成 true 即恢复校正）";
         }
         if (disabled) {
             return "多方块预览校正：已停用（连续捕获异常，已退回未打补丁的行为）";
         }
         if (appliedCount > 0) {
             return "多方块预览校正：已生效 " + appliedCount + " 次，最近一次平移 ("
-                    + lastDx + ", " + lastDy + ") GUI 坐标";
+                    + lastDx + ", " + lastDy + ") GUI 坐标"
+                    + "（格雷官方自 36a6b38/build 124 起已修复偏左上；若你的格雷已是该快照及更新，这个 true 是配置里的旧值——请改回 false，否则图会双重补偿偏向右下）";
         }
         if (hookFired) {
-            return "多方块预览校正：捕获端已挂上，但这次还没画过多方块结构页（打开一次就好）";
+            return "多方块预览校正：已打开（默认是关的，你这台机器配置里写了 true），捕获端已挂上，"
+                    + "还没画过多方块结构页（打开一次就好）；新版格雷若图反而偏右下，把这个开关改回 false";
         }
         return "多方块预览校正：未触发（没装 ModularUI，或 ModularUI 的类名与本模组核对过的版本不同）";
     }

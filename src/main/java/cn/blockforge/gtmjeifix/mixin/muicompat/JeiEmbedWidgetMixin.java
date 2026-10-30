@@ -46,6 +46,11 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  *
  * <p>挂钩都是 {@code require = 0}（注解写死 + 配置里 {@code injectors.defaultRequire = 0}）：
  * ModularUI 换了方法名/签名就整块跳过，绝不把游戏带崩——那时只是维持「偏左上角」这个原状。
+ *
+ * <p>r58：{@code fixes.enableMultiblockEmbedOffset} 默认改为关（格雷官方自 build 124 / {@code 36a6b38}
+ * 的内嵌 MUI 换件起已修复偏左上，r59 字节码取证确认），
+ * 但<b>这个捕获挂钩不受该开关影响、照常挂照常跑</b>——它的 {@code inside} 状态同时是修复⑤
+ * {@code MenuKeepOnScreen} 的第二道闸，开关只闸在 {@code MultiblockEmbedOffset.x()/y()} 出口上。
  */
 @Mixin(targets = "brachy.modularui.integration.jei.recipe.ModularUIJeiCategory$UIWrapperWidget", remap = false)
 public final class JeiEmbedWidgetMixin {

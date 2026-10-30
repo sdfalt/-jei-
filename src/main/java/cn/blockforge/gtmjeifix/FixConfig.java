@@ -28,7 +28,10 @@ import java.util.function.Function;
  * 例：填 40 就只留最近 40 份；填 <b>-1 表示一份都不删</b>。</li>
  * <li><b>r34 新增 {@code fixes.*}</b> —— 五个修复<b>各自的独立开关</b>（启动崩溃修复 / 格雷分类补注册 /
  * RecipeSlot 字段补丁 / 多方块 3D 预览校正 / 弹出菜单不出屏）。将来 GTM 或 ModularUI 官方把某个 bug
- * 修好了，就只关掉对应那一条，其余照旧。默认全部 true，不配置时行为与 r32 一字不差。</li>
+ * 修好了，就只关掉对应那一条，其余照旧。r34～r57 默认全部 true；<b>r58 起修复④
+ * （{@code enableMultiblockEmbedOffset}）默认改为 false</b>——格雷官方自快照 {@code 36a6b38}
+ * （Maven build 124，r59 字节码取证确认）起修好了「JEI 多方块 3D 结构图偏左上角」，
+ * 新版上再开着反而会双重补偿。其余四条默认不变。</li>
  * <li><b>r34 新增 {@code logs.writeStartupLog} 与 {@code report.enabled}</b> —— 两个<b>写文件总开关</b>。
  * 关掉后模组照样干活，只是不往游戏目录里写那两种文件（整合包发布给别人时用得上）。</li>
  * </ol>
@@ -95,8 +98,25 @@ public final class FixConfig {
     public static final int LOG_KEEP_UNLIMITED = -1;
     /** 上限只是防手滑（填几万也没意义），并不会限制「全部保留」——那用 -1。 */
     private static final int LOG_KEEP_MAX = 10000;
-    /** r34：五个修复开关与两个写文件开关的默认值统一为「开」，不配置时行为与 r32 完全一致。 */
+    /** r34：五个修复开关与两个写文件开关的默认值统一为「开」，不配置时行为与 r32 完全一致。
+     *  r58 起修复④不再吃这个默认值——单独走 {@link #DEFAULT_MULTIBLOCK_OFFSET}（关）。 */
     public static final boolean DEFAULT_ALL_ON = true;
+    /**
+     * r58：修复④「JEI 里多方块 3D 结构图偏左上角」的默认值改为<b>关</b>。
+     *
+     * <p>原因：格雷官方自快照 {@code 36a6b38}（Maven build 124）起自己修好了这个偏左上问题
+     * （用户实测确认；r59 取 build 133 / {@code a373c6e} 真 jar 与 build 115 旧内嵌件做
+     * {@code BaseSchemaRenderer.draw} 字节码对比取证：旧版按「transform 坐标＋screenArea」算视口
+     * 矩形，build 124 起改为把矩形两角过真实图形位姿矩阵再算——正是把 JEI 内嵌页面的平移补上了）。
+     * 官方修好的版本上我们若继续补位移，等于<b>补两次</b>——图会反过来偏向右下，
+     * 所以默认关才是对新旧快照整体伤害最小的取向。
+     *
+     * <p>未修复的老快照（{@code d73adfb} / build 115 及更早）仍需本校正：把 {@code fixes.enableMultiblockEmbedOffset}
+     * 改成 true 即可。⚠ 注意升级的坑：配置文件会<b>回填旧值</b>——装过 r34～r57 的人，
+     * 文件里那行已经白纸黑字写着 {@code = true}，默认值改了也压不过它；
+     * 这类人升到新版格雷后需要手动把它改成 false（本模组在 status/报告里会点名提醒）。
+     */
+    public static final boolean DEFAULT_MULTIBLOCK_OFFSET = false;
 
     private static final ModConfigSpec.Builder BUILDER = new ModConfigSpec.Builder();
 
@@ -120,12 +140,14 @@ public final class FixConfig {
                 "这个模组一共在修 5 个 bug，这里每个各给一个开关。",
                 "This mod fixes 5 separate bugs; each one gets its own switch here.",
                 "",
-                "全部保持 true（默认）= 行为与以前所有版本一字不差。",
+                "r58 起的默认值：①②③⑤ 为 true，④多方块预览校正为 false（见它自己的注释）。",
+                "①②③⑤ 全部保持 true 时，行为与以前版本一字不差；",
                 "只有当 GTM / ModularUI / JEI 官方修好了对应的问题，才需要关掉那一条；",
                 "关错了不会崩游戏——最多是那个老 bug 再次出现，改回 true 就恢复。",
-                "Leave all true (default) for exactly the same behaviour as every previous version.",
-                "Turn one off only when the official mod has fixed that particular bug; worst case the",
-                "old symptom comes back and flipping the switch back to true restores the fix.");
+                "Defaults since r58: 1/2/3/5 are true, 4 (multiblock preview shift) is false (see its own",
+                "comment). Keep 1/2/3/5 true for the same behaviour as before; turn one off only when the",
+                "official mod has fixed that particular bug - worst case the old symptom comes back and",
+                "flipping the switch back to true restores the fix.");
         FIX_CRASH = BUILDER
                 .comment(
                         "修「游戏启动崩溃（Cannot invoke IJeiRuntime.getJeiHelpers() because ... is null）」",
@@ -162,8 +184,24 @@ public final class FixConfig {
                         "把 JEI 配方页在屏幕上的真实原点补进那张 3D 图的 OpenGL 视口。",
                         "Adds the recipe page's real screen origin into the 3D preview's GL viewport.",
                         "只影响 JEI 里的那张预览图；机器界面里的同一个预览本来就不受影响。",
-                        "Only the preview embedded in JEI is affected; the same widget in a real machine GUI never was.")
-                .define("enableMultiblockEmbedOffset", DEFAULT_ALL_ON);
+                        "Only the preview embedded in JEI is affected; the same widget in a real machine GUI never was.",
+                        "",
+                        "★ r58 起默认 false：格雷官方自快照 36a6b38（Maven build 124）起已修好这个偏左上问题",
+                        "（r59 真 jar 字节码取证确认，36a6b38/c72e0cf/a373c6e 及更新都算已修复）。",
+                        "新版格雷请保持 false——官方修好后这条若还开着，会再补一次位移，",
+                        "图反过来偏向右下（双重补偿）；老快照（d73adfb / build 115 及更早）",
+                        "图上仍偏左上角的话，把这一项改成 true 即可恢复本校正。",
+                        "NEW in r58 - default false: recent GTM snapshots fixed this offset upstream.",
+                        "Keep false on fixed snapshots (enabling it there would double-shift the preview to",
+                        "the bottom-right); set it back to true on older GTM builds where the preview still",
+                        "sits in the top-left corner.",
+                        "",
+                        "⚠ 升级注意：配置文件会回填旧值。装过 r34～r57 的存档里这一行已经写着",
+                        "true，换 r58 的 jar 并不会自动改成 false——升到已修复的格雷后请手动改回。",
+                        "NOTE: existing config files carry the old value. Installs from r34-r57 already",
+                        "have 'true' written in the file; updating the jar does not rewrite it - change it",
+                        "back to false yourself after moving to a fixed GTM snapshot.")
+                .define("enableMultiblockEmbedOffset", DEFAULT_MULTIBLOCK_OFFSET);
         FIX_MENU_KEEP_ON_SCREEN = BUILDER
                 .comment(
                         "修「控制器里越靠下的缺失方块，『可使用的类型』菜单越往下、甚至开到屏幕外」",
@@ -449,9 +487,9 @@ public final class FixConfig {
         return bool(FIX_RECIPE_SLOT_COMPAT, DEFAULT_ALL_ON);
     }
 
-    /** r34：修复④——JEI 里多方块 3D 预览的位置校正。 */
+    /** r34：修复④——JEI 里多方块 3D 预览的位置校正。r58 起默认关（格雷官方已修好此问题）。 */
     public static boolean multiblockOffsetEnabled() {
-        return bool(FIX_MULTIBLOCK_OFFSET, DEFAULT_ALL_ON);
+        return bool(FIX_MULTIBLOCK_OFFSET, DEFAULT_MULTIBLOCK_OFFSET);
     }
 
     /** r34：修复⑤——弹出菜单不出屏幕。 */
@@ -476,11 +514,15 @@ public final class FixConfig {
     /** 五个修复开关的一行摘要；关掉崩溃修复时附一句警告（这行会进日志、报告和状态命令）。 */
     public static String fixesSummary() {
         boolean crash = crashFixEnabled();
+        boolean offset = multiblockOffsetEnabled();
         return "启动崩溃修复=" + yesNo(crash)
                 + (crash ? "" : "（⚠ 若你的 GTM 还没自己修好那个空指针，游戏仍会像以前一样启动崩溃，改回 true 即恢复）")
                 + "，格雷分类补注册=" + yesNo(categoryBackfillEnabled())
                 + "，RecipeSlot字段补丁=" + yesNo(recipeSlotCompatEnabled())
-                + "，多方块预览校正=" + yesNo(multiblockOffsetEnabled())
+                + "，多方块预览校正=" + yesNo(offset)
+                + (offset
+                        ? "（⚠ r58 起这项默认关：格雷官方自 36a6b38/build 124 起已修好偏左上；你的是新版还开着会双重补偿、图反而偏右下——请改回 false）"
+                        : "（r58 起默认关；d73adfb/build 115 及更早的快照若 3D 图仍偏左上角，把 enableMultiblockEmbedOffset 改回 true）")
                 + "，弹出菜单不出屏=" + yesNo(menuKeepOnScreenEnabled());
     }
 

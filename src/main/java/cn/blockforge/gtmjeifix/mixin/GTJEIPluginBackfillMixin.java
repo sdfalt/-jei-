@@ -99,17 +99,24 @@ public class GTJEIPluginBackfillMixin {
         GtRegistrationBackfill.replaceRecipes(registration);
     }
 
-    /** GTM 登记机器定位的出口：只观测它跑没跑完（不取消、不代登，避免重复催化剂）。 */
+    /**
+     * GTM 登记机器定位的入口：543bc4e 起配方类型改成延迟注册，部分旧快照会在
+     * {@code getRecipeTypes()} / {@code getCategories()} 这一段漏掉机器催化剂，导致按机器物品
+     * 查不到对应的格雷配方。这里不再等原方法跑完，而是在 HEAD 取消它，按 GTM 当前公开的
+     * 机器→配方类型→分类链逐项补登；每项独立容错，避免一个坏机器截断后面的物品。
+     */
     @Inject(
             method = "registerRecipeCatalysts(Lmezz/jei/api/registration/IRecipeCatalystRegistration;)V",
-            at = @At("TAIL"),
+            at = @At("HEAD"),
+            cancellable = true,
             require = 0,
             remap = false)
-    private void gtmjeifix$afterRegisterCatalysts(IRecipeCatalystRegistration registration, CallbackInfo ci) {
-        if (!FixConfig.categoryBackfillEnabled()) {   // r34：关了就不再顺带补催化剂（那条路径也属于补注册）
+    private void gtmjeifix$takeOverRegisterCatalysts(IRecipeCatalystRegistration registration, CallbackInfo ci) {
+        if (!FixConfig.categoryBackfillEnabled()) {   // 与分类/配方接管共用开关，关闭后完全回到 GTM 原版
             return;
         }
-        LOGGER.debug("[gtm_jei_startup_fix] 挂钩命中：GTM#registerRecipeCatalysts");
-        GtRegistrationBackfill.onCatalystsTail(registration);
+        ci.cancel();
+        LOGGER.debug("[gtm_jei_startup_fix] 挂钩命中（HEAD 接管）：GTM#registerRecipeCatalysts");
+        GtRegistrationBackfill.replaceCatalysts(registration);
     }
 }

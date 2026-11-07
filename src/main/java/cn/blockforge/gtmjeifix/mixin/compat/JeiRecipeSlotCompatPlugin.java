@@ -6,6 +6,9 @@ import com.mojang.logging.LogUtils;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.ClassNode;
 import org.objectweb.asm.tree.FieldNode;
+import org.objectweb.asm.tree.MethodInsnNode;
+import org.objectweb.asm.tree.MethodNode;
+import org.objectweb.asm.tree.TypeInsnNode;
 import org.slf4j.Logger;
 import org.spongepowered.asm.mixin.extensibility.IMixinConfigPlugin;
 import org.spongepowered.asm.mixin.extensibility.IMixinInfo;
@@ -79,6 +82,12 @@ public class JeiRecipeSlotCompatPlugin implements IMixinConfigPlugin {
 
     /** 被修的类（内部名）。 */
     private static final String TARGET = "mezz/jei/library/gui/ingredients/RecipeSlot";
+    private static final String RESEARCH_LAYOUT_TARGET =
+            "com/gregtechceu/gtceu/common/recipe/gui/GTRecipeUIModifiers";
+    private static final String WIDGET_OWNER =
+            "com/gregtechceu/gtceu/api/recipe/gui/GTRecipeViewerWidget";
+    private static final String WIDGET_DESC =
+            "(Lbrachy/modularui/api/widget/IWidget;)Lbrachy/modularui/api/widget/IParentWidget;";
 
     private static final String LIST_DESC = "Ljava/util/List;";
 
@@ -135,7 +144,14 @@ public class JeiRecipeSlotCompatPlugin implements IMixinConfigPlugin {
     @Override
     public void preApply(String targetClassName, ClassNode targetClass, String mixinClassName, IMixinInfo mixinInfo) {
         try {
-            if (done || targetClass == null || !TARGET.equals(targetClass.name)) {
+            if (targetClass == null) {
+                return;
+            }
+            if (RESEARCH_LAYOUT_TARGET.equals(targetClass.name)) {
+                patchResearchLayout(targetClass);
+                return;
+            }
+            if (done || !TARGET.equals(targetClass.name)) {
                 return;
             }
             // r34：独立开关。RecipeSlot 一辈子只被类转换一次，所以这一条以本次启动
@@ -190,6 +206,49 @@ public class JeiRecipeSlotCompatPlugin implements IMixinConfigPlugin {
 
     @Override
     public void postApply(String targetClassName, ClassNode targetClass, String mixinClassName, IMixinInfo mixinInfo) {
+    }
+
+    /**
+     * 格雷 543bc4e 的研究信息修改器把研究数据行挂到了根部；改成挂到正文 Flow。
+     *
+     * <p>这里采用精确的 owner/name/descriptor 三项匹配，只改那一个调用点；如果格雷
+     * 后续已经改好调用目标，命中数为 0，补丁自然退化为空操作。</p>
+     */
+    private static void patchResearchLayout(ClassNode targetClass) {
+        int patched = 0;
+        if (targetClass.methods != null) {
+            for (MethodNode method : targetClass.methods) {
+                if (method.instructions == null) continue;
+                for (var node = method.instructions.getFirst(); node != null; node = node.getNext()) {
+                    if (!(node instanceof MethodInsnNode call)
+                            || call.getOpcode() != Opcodes.INVOKEVIRTUAL
+                            || !WIDGET_OWNER.equals(call.owner)
+                            || !"child".equals(call.name)
+                            || !WIDGET_DESC.equals(call.desc)) {
+                        continue;
+                    }
+                    call.setOpcode(Opcodes.INVOKESTATIC);
+                    call.owner = "cn/blockforge/gtmjeifix/ResearchLayoutRedirect";
+                    call.name = "redirect";
+                    call.desc = "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;";
+                    call.itf = false;
+                    // 原调用的返回值是 IParentWidget，不是 Object。重定向方法为了不在编译期
+                    // 绑定 ModularUI，先返回 Object；这里立刻补回原调用点需要的类型，避免
+                    // 带研究数据的装配线页面在校验/执行时因栈类型不匹配而丢失。
+                    method.instructions.insert(call,
+                            new TypeInsnNode(Opcodes.CHECKCAST, "brachy/modularui/api/widget/IParentWidget"));
+                    patched++;
+                }
+            }
+        }
+        if (patched > 0) {
+            String message = "[兼容补丁] 已修正格雷研究数据行布局：装配线数据槽改放进正文 Flow，"
+                    + "避免 LV 以上太阳能板等带数据配方的槽位偏到页面左侧。";
+            LOGGER.info("[gtm_jei_startup_fix] {}（命中 {} 处）", message, patched);
+            FixReport.note(message + "（命中 " + patched + " 处）");
+        } else {
+            LOGGER.debug("[gtm_jei_startup_fix] 研究数据行布局未发现旧 child 调用，保持格雷原版。");
+        }
     }
 
     /** 装了 ModularUI 才需要补；探测不了就当作装了（多补无害）。 */

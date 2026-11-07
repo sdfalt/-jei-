@@ -70,6 +70,26 @@ final class Refl {
         }
     }
 
+    /** 调一个参数的方法（含父类、接口方法也算）。失败返回 null。 */
+    static Object call1Quiet(Object target, String name, Object arg) {
+        if (target == null) return null;
+        try {
+            Method found = null;
+            for (Method m : target.getClass().getMethods()) {
+                if (m.getName().equals(name) && m.getParameterCount() == 1
+                        && (arg == null || m.getParameterTypes()[0].isInstance(arg))) {
+                    found = m;
+                    break;
+                }
+            }
+            if (found == null) return null;
+            found.setAccessible(true);
+            return found.invoke(target, arg);
+        } catch (Throwable ignored) {
+            return null;
+        }
+    }
+
     /** 无参 String 方法。 */
     static String callString0Quiet(Object target, String name) {
         Object v = call0Quiet(target, name);

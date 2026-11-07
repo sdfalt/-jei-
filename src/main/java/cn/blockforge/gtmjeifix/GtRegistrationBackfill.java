@@ -10,6 +10,7 @@ import mezz.jei.api.registration.IRecipeCategoryRegistration;
 import mezz.jei.api.registration.IRecipeRegistration;
 
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.item.ItemStack;
 
 import org.slf4j.Logger;
 
@@ -583,6 +584,166 @@ public final class GtRegistrationBackfill {
     }
 
     // ==================== 小工具 ====================
+
+    /**
+     * 接管 GTM 的机器定位注册。
+     *
+     * <p>543bc4e 对应 build 139 的真实链路是：{@code MACHINES → MachineDefinition.getRecipeTypes()
+     * → GTRecipeType.getCategories() → GTRecipeJEICategory.machineType(category)}。旧快照在
+     * 这条链上使用过无顺序保证的集合，某些机器的物品催化剂会漏掉或对应错分类；逐机器、逐类型、
+     * 逐分类注册可以把每个物品和它实际支持的配方页重新连起来。</p>
+     */
+    @SuppressWarnings("unchecked")
+    public static void replaceCatalysts(IRecipeCatalystRegistration registration) {
+        catalystsHookFired = true;
+        FixReport.note("[挂钩命中] GTM#registerRecipeCatalysts（r62 起 HEAD 接管机器定位）");
+        if (registration == null) return;
+
+        int machines = 0;
+        int catalysts = 0;
+        int skipped = 0;
+        try {
+            Object registry = Refl.staticField(Refl.load(
+                    "com.gregtechceu.gtceu.api.registry.GTRegistries", gtmLoader), "MACHINES");
+            if (!(registry instanceof Iterable<?> all)) {
+                FixReport.note("[接管机器定位] 找不到 GTM#MACHINES，未能补登机器催化剂。");
+                return;
+            }
+            Function<Object, Object> types = resolveTypes();
+            Class<?> jeiCategory = Refl.load(GT_JEI_CATEGORY, gtmLoader);
+            for (Object machine : all) {
+                if (machine == null) continue;
+                machines++;
+                Object stack = Refl.call0Quiet(machine, "asStack");
+                if (!(stack instanceof ItemStack item)) {
+                    skipped++;
+                    continue;
+                }
+                Object recipeTypes = Refl.call0Quiet(machine, "getRecipeTypes");
+                if (recipeTypes == null) recipeTypes = Refl.field(machine, "recipeTypes");
+                if (recipeTypes == null) {
+                    skipped++;
+                    continue;
+                }
+                for (Object recipeType : arrayOrIterable(recipeTypes)) {
+                    if (recipeType == null) continue;
+                    Object categories = Refl.call0Quiet(recipeType, "getCategories");
+                    if (!(categories instanceof Iterable<?> categoryIterable)) continue;
+                    for (Object category : categoryIterable) {
+                        if (category == null || !visibleCategory(category)) continue;
+                        Object jeiType = machineType(jeiCategory, category, types);
+                        if (!(jeiType instanceof mezz.jei.api.recipe.RecipeType<?> type)) {
+                            skipped++;
+                            continue;
+                        }
+                        try {
+                            registration.addRecipeCatalyst(item, type);
+                            catalysts++;
+                        } catch (RuntimeException | LinkageError e) {
+                            noteFailure("登记机器催化剂", e);
+                        }
+                    }
+                }
+            }
+        } catch (RuntimeException | LinkageError e) {
+            noteFailure("接管机器定位", e);
+            FixReport.note("[接管机器定位异常] " + brief(e));
+        }
+        // 原版还会登记两个固定催化剂；接管后一起重放，不能只补机器，
+        // 否则大型化学反应器和程序电路物品的配方入口会反而消失。
+        int special = replaySpecialCatalysts(registration);
+        String line = "[接管机器定位] 已扫描机器 " + machines + " 个，补登机器催化剂 " + catalysts
+                + " 条，固定催化剂 " + special + " 条，跳过 " + skipped
+                + " 条；543bc4e 延迟配方类型兼容已启用。";
+        LOGGER.info("[gtm_jei_startup_fix] {}", line);
+        FixReport.note(line);
+    }
+
+    /** 重放 GTM 原方法里机器以外的两个固定催化剂，兼容旧快照缺少部分物品入口的问题。 */
+    @SuppressWarnings("unchecked")
+    private static int replaySpecialCatalysts(IRecipeCatalystRegistration registration) {
+        int added = 0;
+        try {
+            Object types = Refl.staticField(Refl.load(GT_JEI_CATEGORY, gtmLoader), "TYPES");
+            if (!(types instanceof Function<?, ?> function)) return 0;
+            Object multi = Refl.staticField(Refl.load(
+                    "com.gregtechceu.gtceu.common.data.machines.GTMultiMachines", gtmLoader),
+                    "LARGE_CHEMICAL_REACTOR");
+            Object machine = Refl.call0Quiet(multi, "asStack");
+            Object chemicalCategory = Refl.staticField(Refl.load(
+                    "com.gregtechceu.gtceu.common.data.GTRecipeTypes", gtmLoader), "CHEMICAL_RECIPES");
+            chemicalCategory = Refl.call0Quiet(chemicalCategory, "getCategory");
+            Object jeiType = chemicalCategory == null ? null : ((Function<Object, Object>) function).apply(chemicalCategory);
+            if (machine instanceof ItemStack item && jeiType instanceof mezz.jei.api.recipe.RecipeType<?> type) {
+                registration.addRecipeCatalyst(item, type);
+                added++;
+            }
+            Class<?> circuit = Refl.load("com.gregtechceu.gtceu.common.item.behavior.IntCircuitBehaviour", gtmLoader);
+            Object circuitStack = null;
+            if (circuit != null) {
+                for (Method m : circuit.getDeclaredMethods()) {
+                    if (m.getName().equals("stack") && Modifier.isStatic(m.getModifiers())
+                            && m.getParameterCount() == 1 && m.getParameterTypes()[0] == int.class) {
+                        m.setAccessible(true);
+                        circuitStack = m.invoke(null, 0);
+                        break;
+                    }
+                }
+            }
+            Object circuitType = Refl.staticField(Refl.load(SPECIAL_PROGRAMMED_CIRCUIT, gtmLoader), "RECIPE_TYPE");
+            if (circuitStack instanceof ItemStack item && circuitType instanceof mezz.jei.api.recipe.RecipeType<?> type) {
+                registration.addRecipeCatalyst(item, type);
+                added++;
+            }
+        } catch (ReflectiveOperationException | RuntimeException | LinkageError e) {
+            noteFailure("登记固定催化剂", e);
+        }
+        return added;
+    }
+
+    /** 543bc4e 的 machineType 特殊处理炉子分类；老快照没有该静态方法时退回 TYPES。 */
+    private static Object machineType(Class<?> jeiCategory, Object category, Function<Object, Object> types) {
+        if (jeiCategory != null) {
+            try {
+                for (Method m : jeiCategory.getDeclaredMethods()) {
+                    if (m.getName().equals("machineType") && Modifier.isStatic(m.getModifiers())
+                            && m.getParameterCount() == 1
+                            && m.getParameterTypes()[0].isInstance(category)) {
+                        m.setAccessible(true);
+                        return m.invoke(null, category);
+                    }
+                }
+            } catch (ReflectiveOperationException | RuntimeException | LinkageError e) {
+                noteFailure("取 GTM machineType", e);
+            }
+        }
+        if (types != null) {
+            try {
+                return types.apply(category);
+            } catch (RuntimeException | LinkageError e) {
+                noteFailure("取 GTM TYPES", e);
+            }
+        }
+        return null;
+    }
+
+    private static boolean visibleCategory(Object category) {
+        // 与 build 139 的 GTRecipeJEICategory.registerRecipeCatalysts 完全一致：这里只看
+        // isXEIVisible。不能额外调用 shouldRegisterDisplays()，它会把炉子分类挡掉，而炉子
+        // 的 machineType() 还要专门映射到 JEI 原版 RecipeTypes.SMELTING。
+        Object visible = Refl.call0Quiet(category, "isXEIVisible");
+        return !(visible instanceof Boolean b) || b;
+    }
+
+    private static Iterable<?> arrayOrIterable(Object value) {
+        if (value instanceof Iterable<?> iterable) return iterable;
+        if (!value.getClass().isArray()) return List.of();
+        List<Object> out = new ArrayList<>(java.lang.reflect.Array.getLength(value));
+        for (int i = 0; i < java.lang.reflect.Array.getLength(value); i++) {
+            out.add(java.lang.reflect.Array.get(value, i));
+        }
+        return out;
+    }
 
     /** GTM 的 ConfigHolder：{@code ConfigHolder.INSTANCE.<group>.<key>}（boolean 字段）；拿不到用默认值。 */
     private static boolean configBool(String group, String key, boolean fallback) {

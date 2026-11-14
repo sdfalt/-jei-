@@ -1,0 +1,10 @@
+{
+  "recipe_category.gtceu.ore_crushing": "鉱石研磨",
+  "recipe_category.gtceu.ore_forging": "鉱石粉砕",
+  "recipe_category.gtceu.ore_bathing": "鉱石処理",
+  "recipe_category.gtceu.chem_dyes": "化学染色",
+  "recipe_category.gtceu.ingot_molding": "金属成形",
+  "recipe_category.gtceu.arc_furnace_recycling": "アーク炉スクラップ処理",
+  "recipe_category.gtceu.macerator_recycling": "部品研削",
+  "recipe_category.gtceu.extractor_recycling": "スクラップ再溶解"
+}

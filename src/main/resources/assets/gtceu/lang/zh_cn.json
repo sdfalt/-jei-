@@ -1,0 +1,10 @@
+{
+  "recipe_category.gtceu.ore_crushing": "研磨机：矿物处理",
+  "recipe_category.gtceu.ore_forging": "锻造锤：矿物处理",
+  "recipe_category.gtceu.ore_bathing": "化学浸洗机：矿物处理",
+  "recipe_category.gtceu.chem_dyes": "化学浸洗机：化学染色",
+  "recipe_category.gtceu.ingot_molding": "合金炉：金属成型",
+  "recipe_category.gtceu.arc_furnace_recycling": "电弧炉：等离子回收",
+  "recipe_category.gtceu.macerator_recycling": "研磨机：粉碎回收",
+  "recipe_category.gtceu.extractor_recycling": "提取机：重熔回收"
+}

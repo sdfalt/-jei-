@@ -213,6 +213,12 @@ public class JeiRecipeSlotCompatPlugin implements IMixinConfigPlugin {
      *
      * <p>这里采用精确的 owner/name/descriptor 三项匹配，只改那一个调用点；如果格雷
      * 后续已经改好调用目标，命中数为 0，补丁自然退化为空操作。</p>
+     *
+     * <p>r68 核对（快照 {@code d5bafc8} / Maven build 140）：格雷把装配线换成了自己的
+     * 自定义布局（{@code GTRecipeTypeUIs.ASSLINE}），研究数据槽由它自己摆进正文；
+     * {@code ResearchCondition.modifyUI()} 返回空修改器，{@code RESEARCH_INFO} 成了没人调的
+     * 死代码。该调用点在字节码里仍逐字存在，所以本补丁照样命中、但运行时永远不会执行
+     * 那段 lambda——对 543bc4e 及更早的快照，这条重定向仍是槽位偏移的正解，两边都不能删。</p>
      */
     private static void patchResearchLayout(ClassNode targetClass) {
         int patched = 0;

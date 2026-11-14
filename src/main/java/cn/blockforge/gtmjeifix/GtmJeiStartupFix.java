@@ -324,6 +324,22 @@ import org.slf4j.Logger;
  * 真值：gtceu-8.0.0-snapshot.javap.txt 头部重建为 build 133、正文 CategoryIcon 一块按真 jar
  * 重建（其余 18 块逐行未变）；新增 modularui-nested-in-gtceu-a373c6e.javap.txt。修复逻辑
  * 一字未动（仅五处玩家文案改按快照写边界），版本号照升并出包交付。
+ * r68 适配 GTM 最新快照 d5bafc8（Maven build 140；2026-11-13）：重新取真 jar 做字节码核对。
+ * 官方真 jar 17,263,175 字节、SHA-256 522e9a35…aec82a2（与 Maven 目录 .sha256 一字对上），
+ * jar 内自报 version="8.0.0-SNAPSHOT+d5bafc8"；内嵌 ModularUI 与 build 124/126/133/139 逐字节
+ * 相同（1,798,708 字节、SHA-256 2774f7c7…b2606d）。543bc4e→d5bafc8 共 39 个提交、去重 166 个
+ * 文件（#5604 配方页布局整体重做、多方块 UI 大改等），七条 mixin 挂钩、GTM 钉点、特殊分类
+ * 构造器、固定催化剂链、GTRecipeViewerWidget.textComponents、GTRecipeUIModifiers 重定向锚点
+ * 逐条 javap 全部命中；CategoryIcon$JeiCallWrapper 两条重载仍 offset 0 裸调 getRuntime()，
+ * 崩溃链原样存在，五项修复一个都不能少。装配线研究数据槽改由官方 ASSLINE 自定义布局摆放，
+ * RESEARCH_INFO 成死代码——r63/r65 的重定向在新快照命中但永不执行、老快照仍是正解，保留。
+ * ★ 本轮唯一新增行为：随 jar 补 gtceu 命名空间 lang（en_us/zh_cn/ja_jp/ru_ru/uk_ua 各 8 键），
+ * 修「电弧炉回收等配方子分类页面标题与提示显示注册键 recipe_category.gtceu.*」——官方
+ * GTRegistrate.recipeCategory 带 lang 的重载转调时丢 lang（笔误），这些键从未被 datagen 生成。
+ * 纯资源补丁、无开关；机制经 ClientLanguage/FallbackResourceManager 真字节码核对（跨模组
+ * 命名空间 lang 全栈并集、与格雷既有键零重叠）。另按官方 issue #216 查实 MV+ 太阳能板无配方
+ * 系有意为之，非显示链缺陷，不代打内容补丁。真值：新增 gtceu-8.0.0-snapshot-d5bafc8.javap.txt。
+ * 版本号照升并出包交付。
  */
 @Mod(GtmJeiStartupFix.MOD_ID)
 public final class GtmJeiStartupFix {
@@ -402,6 +418,14 @@ public final class GtmJeiStartupFix {
                 + "现在会逐条明说「这一项看不懂，本次按默认 X 走」——日志、报告、聊天栏与 status 四处同步。");
         FixReport.note("[兼容补丁] r17 的「RecipeSlot 字段补丁」已就位：第一次打开配方页时才生效，"
                 + "生效时会在这份日志里记一条「已为 ModularUI 补回字段」；没记就是没触发（老 JEI 或没装 ModularUI）。");
+        FixReport.note("[配方页标题翻译] r68 起随 jar 附带格雷配方子分类标题的翻译补齐："
+                + "格雷 GTRegistrate.recipeCategory 两个带 lang 参数的重载在转调时把 lang 丢了（官方笔误），"
+                + "8 个子分类（电弧炉回收、研磨机回收、提取机回收、矿物研磨、矿物锻压、矿物浸洗、化学染色、金属成型）"
+                + "的标题键 recipe_category.gtceu.* 在 543bc4e/d5bafc8 的 jar 语言文件里一条都没有，"
+                + "配方页与悬浮提示只能显示原始键名。本模组在 gtceu 命名空间补了 en_us/zh_cn/ja_jp/ru_ru/uk_ua "
+                + "五份（英文用格雷源码里本来的措辞；简中按官方繁中译名改写；日/俄/乌直接沿用格雷旧键下的既有译文；"
+                + "de_de、pt_br、zh_tw 格雷自己已经写对，不动）。纯资源补丁：无开关、无逻辑，"
+                + "官方哪天补上同名键也只是并列不冲突。");
         FixReport.note("[多方块预览校正] r24 的位置补丁已就位（客户端）：打开 JEI 的格雷多方块结构页时生效，"
                 + "生效时会在这份日志里记一条「已生效」。当前 ModularUI 版本 "
                 + FixReport.modVersion("modularui") + "。");

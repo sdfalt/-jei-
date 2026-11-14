@@ -1,0 +1,10 @@
+{
+  "recipe_category.gtceu.ore_crushing": "Измельчение руды",
+  "recipe_category.gtceu.ore_forging": "Дробление руды",
+  "recipe_category.gtceu.ore_bathing": "Обработка руды",
+  "recipe_category.gtceu.chem_dyes": "Хим. покраска",
+  "recipe_category.gtceu.ingot_molding": "Отливка металлов",
+  "recipe_category.gtceu.arc_furnace_recycling": "Дуговая утилизация",
+  "recipe_category.gtceu.macerator_recycling": "Утилизация измельчителем",
+  "recipe_category.gtceu.extractor_recycling": "Утилизация экстрактором"
+}

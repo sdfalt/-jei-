@@ -1,0 +1,10 @@
+{
+  "recipe_category.gtceu.ore_crushing": "Ore Grinding",
+  "recipe_category.gtceu.ore_forging": "Ore Crushing",
+  "recipe_category.gtceu.ore_bathing": "Ore Treating",
+  "recipe_category.gtceu.chem_dyes": "Chemical Dyeing",
+  "recipe_category.gtceu.ingot_molding": "Metal Molding",
+  "recipe_category.gtceu.arc_furnace_recycling": "Arc Scrapping",
+  "recipe_category.gtceu.macerator_recycling": "Part Grinding",
+  "recipe_category.gtceu.extractor_recycling": "Scrap Remelting"
+}

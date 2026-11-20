@@ -6,5 +6,7 @@
   "recipe_category.gtceu.ingot_molding": "Лиття металу",
   "recipe_category.gtceu.arc_furnace_recycling": "Дугова переробка",
   "recipe_category.gtceu.macerator_recycling": "Переробка",
-  "recipe_category.gtceu.extractor_recycling": "Переливання металобрухту"
+  "recipe_category.gtceu.extractor_recycling": "Переливання металобрухту",
+  "gtceu.terminal.clear_multi": "Очистити схему багатоблочної структури, збережену в цьому терміналі",
+  "gtceu.terminal.clear_preference": "Очистити налаштування розміщення блоків, збережені в цьому терміналі"
 }

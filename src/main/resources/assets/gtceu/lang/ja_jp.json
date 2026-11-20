@@ -6,5 +6,7 @@
   "recipe_category.gtceu.ingot_molding": "金属成形",
   "recipe_category.gtceu.arc_furnace_recycling": "アーク炉スクラップ処理",
   "recipe_category.gtceu.macerator_recycling": "部品研削",
-  "recipe_category.gtceu.extractor_recycling": "スクラップ再溶解"
+  "recipe_category.gtceu.extractor_recycling": "スクラップ再溶解",
+  "gtceu.terminal.clear_multi": "この端末に保存されたマルチブロック構造を消去",
+  "gtceu.terminal.clear_preference": "この端末に保存されたブロック配置の設定を消去"
 }

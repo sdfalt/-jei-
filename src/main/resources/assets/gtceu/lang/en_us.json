@@ -6,5 +6,7 @@
   "recipe_category.gtceu.ingot_molding": "Metal Molding",
   "recipe_category.gtceu.arc_furnace_recycling": "Arc Scrapping",
   "recipe_category.gtceu.macerator_recycling": "Part Grinding",
-  "recipe_category.gtceu.extractor_recycling": "Scrap Remelting"
+  "recipe_category.gtceu.extractor_recycling": "Scrap Remelting",
+  "gtceu.terminal.clear_multi": "Clear the multiblock layout saved in this terminal",
+  "gtceu.terminal.clear_preference": "Clear the block placement preferences saved in this terminal"
 }

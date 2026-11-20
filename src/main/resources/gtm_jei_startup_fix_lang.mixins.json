@@ -1,0 +1,12 @@
+{
+    "required": true,
+    "package": "cn.blockforge.gtmjeifix.mixin.lang",
+    "compatibilityLevel": "JAVA_21",
+    "minVersion": "0.8.5",
+    "client": [
+        "PreviewTextZhMixin"
+    ],
+    "injectors": {
+        "defaultRequire": 0
+    }
+}

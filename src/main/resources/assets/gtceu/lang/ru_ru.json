@@ -6,5 +6,7 @@
   "recipe_category.gtceu.ingot_molding": "Отливка металлов",
   "recipe_category.gtceu.arc_furnace_recycling": "Дуговая утилизация",
   "recipe_category.gtceu.macerator_recycling": "Утилизация измельчителем",
-  "recipe_category.gtceu.extractor_recycling": "Утилизация экстрактором"
+  "recipe_category.gtceu.extractor_recycling": "Утилизация экстрактором",
+  "gtceu.terminal.clear_multi": "Очистить схему многоблочной структуры, сохранённую в этом терминале",
+  "gtceu.terminal.clear_preference": "Очистить предпочтения по размещению блоков, сохранённые в этом терминале"
 }

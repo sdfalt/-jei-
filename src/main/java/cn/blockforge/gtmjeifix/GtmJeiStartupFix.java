@@ -106,8 +106,8 @@ import org.slf4j.Logger;
  * 详见 {@link FixConfig}（含「NeoForge 在模组构造之后才加载配置」这个必须绕开的时序坑）。
  *
  * <p><b>r34 新增：配置文件扩到四组 + 游戏内命令 {@code /gtmfix}</b>：
- * ① {@code [fixes]} —— 五个修复（启动崩溃 / 格雷分类补注册 / RecipeSlot 字段 /
- *     多方块 3D 预览 / 弹出菜单不出屏）<b>各自一个开关</b>；r34～r57 默认全 true＝行为与 r32 一字不差，
+ * ① {@code [fixes]} —— 六个修复（启动崩溃 / 格雷分类补注册 / RecipeSlot 字段 /
+ *     配方页布局兼容（r70）/ 多方块 3D 预览 / 弹出菜单不出屏）<b>各自一个开关</b>；r34～r57 默认全 true＝行为与 r32 一字不差，
  *     <b>r58 起修复④（enableMultiblockEmbedOffset）默认改 false</b>——格雷官方自快照
  *     {@code 36a6b38}（Maven build 124，r59 取证确认）起已修好「JEI 里多方块 3D 结构图偏左上角」，
  *     新版上开着反而双重补偿；{@code d73adfb}/build 115 及更早改回 true 即恢复校正。
@@ -340,6 +340,29 @@ import org.slf4j.Logger;
  * 命名空间 lang 全栈并集、与格雷既有键零重叠）。另按官方 issue #216 查实 MV+ 太阳能板无配方
  * 系有意为之，非显示链缺陷，不代打内容补丁。真值：新增 gtceu-8.0.0-snapshot-d5bafc8.javap.txt。
  * 版本号照升并出包交付。
+ *
+ * <p>r69 适配 809dda7（build 147）并新增「JEI 多方块 3D 预览页汉化」：三句字节码写死的英文
+ * 提示由第四份 mixin 配置（lang，{@code defaultRequire=0}）在 zh 系语言现场替换，另补齐官方
+ * 漏发的 terminal 两键 8 语言；真值存档头部重建为 build 147。
+ *
+ * <p><b>r70 新增修复⑥「配方页布局兼容」＋适配 ddc74f1（build 150）</b>：用户把 JEI 升到
+ * 19.76.1.482 后，一进世界（配方同步拉起 JEI）或一打开配方页就崩——格雷内嵌的第 8 号
+ * ModularUI 快照里 {@code modularui.mixins.json:jei.RecipeGuiLogicMixin} 挂的是 JEI 老
+ * {@code getVisibleRecipeLayoutsWithButtons} 方法体的 {@code recipeHeight} 局部变量，
+ * JEI 19.7x 网格滚动重构（签名改 {@code ImmutableSize2i} 起首、局部删除）让它扫 0 目标，
+ * MUI 配置 {@code defaultRequire=1}＋插件只按模组存在性裁剪 → 装了必崩。官方已在 ModularUI
+ * 第 9 号快照（2026-11-25）改写该 mixin，但格雷 build 150 内嵌件未换（逐字节仍是 -8 号）。
+ * r70 在 {@code FMLClientSetupEvent} 时判定「旧 MUI（mixin 字节码无 ImmutableSize2i 引用）×
+ * 新 JEI（RecipeGuiLogic 原始字节码含新签名描述符）」同时成立，才把那条 MixinInfo 从
+ * MUI 配置（{@code Config.allConfigs → MixinConfig} 的 mixins / mixinMapping / mixinClasses*）
+ * 里摘掉，并由 {@code RecipeGuiLogicMaxSizeMixin}（jeicompat 配置，priority 900，恒挂、
+ * 运行时按 takeoverWanted 决定包不包）按官方同款 {@code Optional.map} 锚点等价接管布局修正；
+ * 任何一步判定不成立或异常都整体原状（宁可不修不误伤）。新开关
+ * {@code fixes.enableRecipeGuiLogicCompat}（默认开）；{@link RecipeGuiLogicCompat} 记判定
+ * 结论供自检⑥/报告/status 读取。build 150 侧 19 钉点 18 块零漂移（唯一变化是
+ * MultiblockInfoJeiCategory 内部 lambda 挪位置，不碰挂钩），前五项修复照旧一个不能少；
+ * 真值：新增 tools/ground-truth/jei-19.76-mui-recipeguilogic-javap.txt，主存档头部重建为
+ * build 150、MultiblockInfoJeiCategory 块按真 jar 重建。
  */
 @Mod(GtmJeiStartupFix.MOD_ID)
 public final class GtmJeiStartupFix {
@@ -395,12 +418,14 @@ public final class GtmJeiStartupFix {
                 + "，gtceu " + FixReport.modVersion("gtceu") + "）");
         FixReport.note("[配置] 本模组的设置文件：游戏根目录 " + FixConfig.filePathHint()
                 + "（第一次启动由游戏自动生成，删了下次还会重新生成）。r34 起一共四组，注释中英双语："
-                + "① [fixes] 五个修复各自的独立开关（enableStartupCrashFix / enableCategoryBackfill / "
-                + "enableRecipeSlotCompat / enableMultiblockEmbedOffset / enableMenuKeepOnScreen，"
-                + "前四条与⑤默认 true；④多方块预览校正自 r58 起默认 false——格雷官方自快照 36a6b38"
+                + "① [fixes] 六个修复各自的独立开关（enableStartupCrashFix / enableCategoryBackfill / "
+                + "enableRecipeSlotCompat / enableRecipeGuiLogicCompat / enableMultiblockEmbedOffset / enableMenuKeepOnScreen，"
+                + "除④外默认全 true；④多方块预览校正自 r58 起默认 false——格雷官方自快照 36a6b38"
                 + "（Maven build 124）起已修好「JEI 里 3D 结构图偏左上角」（r59 取证确认），新版上开着反而"
                 + "双重补偿；d73adfb/build 115 及更早仍偏的话把它改回 true。"
-                + "老配置文件会回填旧值 true，升了已修复的格雷后记得手动改回）；"
+                + "老配置文件会回填旧值 true，升了已修复的格雷后记得手动改回。"
+                + "⑥配方页布局兼容是 r70 新增：JEI 19.7x × 旧 ModularUI 那个一进世界就崩的组合，"
+                + "开着才保护，关掉＝退回崩溃原状，不建议关）；"
                 + "② [messages] joinChatReminder（默认 " + FixConfig.DEFAULT_CHAT_REMINDER
                 + "）= 每次进入游戏时聊天栏那几行提醒发不发；"
                 + "③ [logs] startupLogKeep（默认 " + FixConfig.DEFAULT_LOG_KEEP
@@ -448,11 +473,32 @@ public final class GtmJeiStartupFix {
                 + "之后每次调整各记一行「第 N 次调整：分支 / 现场 y / 目标 y / 按钮矩形 / 滚动补偿 / 菜单尺寸 / 可视区」，"
                 + "最多 " + MenuKeepOnScreen.reportQuota() + " 条，其余只进日志文件。当前 ModularUI 版本 "
                 + FixReport.modVersion("modularui") + "。");
+        FixReport.note("[配方页布局兼容] r70 新增（客户端）：JEI 19.7x 把配方页布局重构成网格滚动制后，"
+                + "旧 ModularUI 3.3.1 快照里那条 RecipeGuiLogicMixin（挂老方法体的 recipeHeight 局部变量）"
+                + "注入目标消失，sponge-mixin 判关键注入失败——进世界或一打开配方页就崩"
+                + "（崩溃底部 Caused by 写 modularui.mixins.json:jei.RecipeGuiLogicMixin）。"
+                + "本模组在客户端初始化时判定：确认「旧 ModularUI × 新 JEI」才从 ModularUI 的 mixin 配置里"
+                + "摘掉那一条（其余一条不动），并按 ModularUI 官方 11-25 修复快照的写法挂上自己的等价接管"
+                + "（配方分类是 ModularUIJeiCategory 时用 getMaxWidth/getMaxHeight 定每格尺寸，布局效果一致）。"
+                + "旧 JEI、或 ModularUI 已是修好的官方快照时整体不插手；判定与生效结果见 [校正自检] 第⑥条"
+                + "与游戏内 /gtmfix status；开关 fixes.enableRecipeGuiLogicCompat（关掉＝退回崩溃原状，不建议）。当前 "
+                + "JEI " + FixReport.modVersion("jei") + "，ModularUI " + FixReport.modVersion("modularui") + "。");
         // 走到这里必然是客户端（专用服务端已在构造函数上面的 r40 分支 return）。
         // 保留这道 dist 判断纯是防御：万一将来有人挪动上面那个早退，也不会把客户端
         // tick 轮询/命令注册漏到服务端上。RegisterClientCommandsEvent 本就只在物理客户端发。
         if (FMLEnvironment.dist.isClient()) {
             ClientIconFixupPolling.register();
+            // r70：ModularUI×新版 JEI 的 RecipeGuiLogic 兼容（停用坏 mixin＋等价接管）。
+            // 必须赶在 RecipeGuiLogic 第一次被类转换之前做完——那最早也发生在进世界后的
+            // 配方同步/JEI 启动，客户端初始化事件远在其前；配置也已在模组构造后、setup 前读到，
+            // enableRecipeGuiLogicCompat 开关此刻是真实值。install 幂等且只记不抛。
+            try {
+                modEventBus.addListener((net.neoforged.fml.event.lifecycle.FMLClientSetupEvent event) ->
+                        RecipeGuiLogicCompat.install());
+            } catch (Throwable e) {
+                LOGGER.warn("[gtm_jei_startup_fix] RecipeGuiLogic 兼容处理的挂接失败（不影响其余修复）：{}",
+                        e.toString());
+            }
             // r34：游戏内命令 /gtmfix（status/reload/report）。注册在客户端命令表上：
             // 不开作弊、不要 OP，任何物理客户端都能敲；服务端专用端根本没有这个事件，天然不注册。
             try {

@@ -139,7 +139,7 @@ final class FixHealth {
     // ---------------- 入口 ----------------
 
     /**
-     * 幂等：把五项修复各判一遍、写进报告与日志。重复调用只有第一次会落盘，
+     * 幂等：把六项修复各判一遍（r70 起）、写进报告与日志。重复调用只有第一次会落盘，
      * 但返回值（{@link #summaryLine()} 等）永远现算，配置开关中途变了也能如实反映。
      */
     static void runOnce() {
@@ -153,6 +153,7 @@ final class FixHealth {
             ITEMS.add(checkCrashFix());
             ITEMS.add(checkCategoryBackfill());
             ITEMS.add(checkRecipeSlotCompat());
+            ITEMS.add(checkRecipeGuiLogicCompat());
             ITEMS.add(checkMultiblockOffset());
             ITEMS.add(checkMenuKeepOnScreen());
             jarDupWarning = findDuplicateJars();
@@ -196,7 +197,7 @@ final class FixHealth {
         }
     }
 
-    // ---------------- 五项修复逐条体检 ----------------
+    // ---------------- 六项修复逐条体检（r70 起） ----------------
 
     /** 修复①：启动崩溃。它是 require=1 的硬挂钩——不落地的话游戏当场就崩，没有「静默」可言。 */
     private static Item checkCrashFix() {
@@ -250,6 +251,31 @@ final class FixHealth {
             return new Item("修复③·RecipeSlot字段补丁", Verdict.BROKEN, outcome);
         }
         return new Item("修复③·RecipeSlot字段补丁", Verdict.LANDED, outcome);
+    }
+
+    /**
+     * r70 修复⑥：旧 ModularUI × 新 JEI(19.7x) 的 RecipeGuiLogic 布局 mixin 兼容。
+     * 判定发生在客户端初始化（RecipeGuiLogic 被类转换之前），结果由 RecipeGuiLogicCompat 自己记。
+     */
+    private static Item checkRecipeGuiLogicCompat() {
+        String outcome = cn.blockforge.gtmjeifix.RecipeGuiLogicCompat.outcome();
+        if (outcome.startsWith("已按配置关闭")) {
+            return new Item("修复⑥·配方页布局兼容", Verdict.OFF_BY_CONFIG, outcome);
+        }
+        if (outcome.startsWith("还没触发")) {
+            return new Item("修复⑥·配方页布局兼容", Verdict.WAIT_USE, outcome);
+        }
+        if (outcome.startsWith("已停用")) {
+            return new Item("修复⑥·配方页布局兼容", Verdict.LANDED, outcome);
+        }
+        if (outcome.startsWith("没有检测到") || outcome.startsWith("ModularUI 已是官方修好")
+                || outcome.startsWith("JEI 还是旧签名") || outcome.startsWith("ModularUI 的配置里已经查不到")) {
+            return new Item("修复⑥·配方页布局兼容", Verdict.NO_TARGET_MOD, outcome);
+        }
+        if (outcome.startsWith("执行出错") || outcome.contains("什么都没做——打开配方页仍会崩")) {
+            return new Item("修复⑥·配方页布局兼容", Verdict.BROKEN, outcome);
+        }
+        return new Item("修复⑥·配方页布局兼容", Verdict.UNCLEAR, outcome);
     }
 
     /** 修复④：多方块 3D 预览位置校正（两条 mixin 各查一遍目标，再读运行时计数）。 */

@@ -149,7 +149,7 @@ final class ClientIconFixupPolling {
             // r32 起这两行讲配置；r34 配置扩到四组、又多了 /gtmfix，指路文案跟着更新
             player.displayClientMessage(Component.literal(head + "这些设置都能在游戏根目录 "
                     + FixConfig.filePathHint() + " 里改（注释中英双语）："
-                    + "[fixes] 五个修复各自开关、[messages] 这几行提示、"
+                    + "[fixes] 六个修复各自开关（含 r70 新增的配方页布局兼容）、[messages] 这几行提示、"
                     + "[logs] 日志份数与 writeStartupLog、[report] 要不要写报告。"
                     + "改完保存后敲 /gtmfix reload 立刻生效，/gtmfix status 看现状，"
                     + "/gtmfix report 拿报告文件路径（不需要作弊权限）。"), false);

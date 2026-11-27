@@ -98,7 +98,7 @@ public final class FixConfig {
     public static final int LOG_KEEP_UNLIMITED = -1;
     /** 上限只是防手滑（填几万也没意义），并不会限制「全部保留」——那用 -1。 */
     private static final int LOG_KEEP_MAX = 10000;
-    /** r34：五个修复开关与两个写文件开关的默认值统一为「开」，不配置时行为与 r32 完全一致。
+    /** r34：五个修复开关（r70 起六个，新增 enableRecipeGuiLogicCompat）与两个写文件开关的默认值统一为「开」，不配置时行为与 r32 完全一致。
      *  r58 起修复④不再吃这个默认值——单独走 {@link #DEFAULT_MULTIBLOCK_OFFSET}（关）。 */
     public static final boolean DEFAULT_ALL_ON = true;
     /**
@@ -127,6 +127,7 @@ public final class FixConfig {
     private static final ModConfigSpec.BooleanValue FIX_CRASH;
     private static final ModConfigSpec.BooleanValue FIX_CATEGORY_BACKFILL;
     private static final ModConfigSpec.BooleanValue FIX_RECIPE_SLOT_COMPAT;
+    private static final ModConfigSpec.BooleanValue FIX_RECIPE_GUI_LOGIC;
     private static final ModConfigSpec.BooleanValue FIX_MULTIBLOCK_OFFSET;
     private static final ModConfigSpec.BooleanValue FIX_MENU_KEEP_ON_SCREEN;
 
@@ -178,6 +179,21 @@ public final class FixConfig {
                         "Note: the value in effect when JEI's RecipeSlot class is first transformed wins",
                         "(that happens once, the first time a recipe page opens); restart to fully re-evaluate.")
                 .define("enableRecipeSlotCompat", DEFAULT_ALL_ON);
+        FIX_RECIPE_GUI_LOGIC = BUILDER
+                .comment(
+                        "修「JEI 升到 19.7x 后一打开配方页/进世界就崩（ModularUI 的 RecipeGuiLogicMixin 注入失败）」",
+                        "Fixes the crash when JEI >= 19.7x meets old ModularUI 3.3.1 snapshots",
+                        "JEI 19.7x 重构了配方页布局，旧 ModularUI 那条挂老方法体的 mixin 扫不到目标，",
+                        "sponge-mixin 判关键注入失败直接崩游戏。本模组确认后从 ModularUI 的配置里",
+                        "只摘掉那一条（其余一条不动），并按 ModularUI 官方修复快照（第 9 号）的写法",
+                        "挂上等价的布局接管，配方页显示效果与官方修复一致。",
+                        "ModularUI 官方第 9 号 build（2026-11-25 及更新）或老版 JEI（19.5x 及更早）上，",
+                        "本条判定不成立、整体自动不插手；关掉它＝退回崩溃原状（不建议）。",
+                        "This mod strips that one broken mixin from ModularUI's mixin config and installs",
+                        "the official fix's equivalent takeover. No-op when ModularUI is already fixed",
+                        "(snapshot build 9+) or JEI is still old. Turning it off restores the crash.",
+                        "取值以客户端初始化那一刻为准，早于任何配方页被打开；改动重启生效。")
+                .define("enableRecipeGuiLogicCompat", DEFAULT_ALL_ON);
         FIX_MULTIBLOCK_OFFSET = BUILDER
                 .comment(
                         "修「JEI 里格雷的多方块 3D 结构图偏左上角」 / Fixes the offset 3D multiblock preview inside JEI",
@@ -487,6 +503,11 @@ public final class FixConfig {
         return bool(FIX_RECIPE_SLOT_COMPAT, DEFAULT_ALL_ON);
     }
 
+    /** r70：修复⑥——旧 ModularUI × 新 JEI(19.7x) 的 RecipeGuiLogic 布局 mixin 兼容（停用＋接管）。 */
+    public static boolean recipeGuiLogicCompatEnabled() {
+        return bool(FIX_RECIPE_GUI_LOGIC, DEFAULT_ALL_ON);
+    }
+
     /** r34：修复④——JEI 里多方块 3D 预览的位置校正。r58 起默认关（格雷官方已修好此问题）。 */
     public static boolean multiblockOffsetEnabled() {
         return bool(FIX_MULTIBLOCK_OFFSET, DEFAULT_MULTIBLOCK_OFFSET);
@@ -511,7 +532,7 @@ public final class FixConfig {
                 + "（来自 " + filePathHint() + (isLoaded() ? "" : "，还没读到，暂按默认值") + "）";
     }
 
-    /** 五个修复开关的一行摘要；关掉崩溃修复时附一句警告（这行会进日志、报告和状态命令）。 */
+    /** 六个修复开关的一行摘要（r70 起含 enableRecipeGuiLogicCompat）；关掉崩溃修复时附一句警告（这行会进日志、报告和状态命令）。 */
     public static String fixesSummary() {
         boolean crash = crashFixEnabled();
         boolean offset = multiblockOffsetEnabled();
@@ -519,6 +540,9 @@ public final class FixConfig {
                 + (crash ? "" : "（⚠ 若你的 GTM 还没自己修好那个空指针，游戏仍会像以前一样启动崩溃，改回 true 即恢复）")
                 + "，格雷分类补注册=" + yesNo(categoryBackfillEnabled())
                 + "，RecipeSlot字段补丁=" + yesNo(recipeSlotCompatEnabled())
+                + "，RecipeGuiLogic布局兼容=" + yesNo(recipeGuiLogicCompatEnabled())
+                + (recipeGuiLogicCompatEnabled() ? ""
+                        : "（⚠ 关掉后旧 ModularUI × JEI≥19.7x 打开配方页会崩，改回 true 并重启恢复保护）")
                 + "，多方块预览校正=" + yesNo(offset)
                 + (offset
                         ? "（⚠ r58 起这项默认关：格雷官方自 36a6b38/build 124 起已修好偏左上；你的是新版还开着会双重补偿、图反而偏右下——请改回 false）"

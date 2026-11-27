@@ -82,6 +82,8 @@ public class JeiRecipeSlotCompatPlugin implements IMixinConfigPlugin {
 
     /** 被修的类（内部名）。 */
     private static final String TARGET = "mezz/jei/library/gui/ingredients/RecipeSlot";
+    /** r70：ModularUI 坏 mixin 的目标类（内部名），只作兜底触发的判名用。 */
+    private static final String RECIPE_GUI_LOGIC = "mezz/jei/gui/recipes/RecipeGuiLogic";
     private static final String RESEARCH_LAYOUT_TARGET =
             "com/gregtechceu/gtceu/common/recipe/gui/GTRecipeUIModifiers";
     private static final String WIDGET_OWNER =
@@ -121,6 +123,13 @@ public class JeiRecipeSlotCompatPlugin implements IMixinConfigPlugin {
         return null;
     }
 
+    /**
+     * r70：接管用的 {@code RecipeGuiLogicMaxSizeMixin} 恒放行——「要不要真的接管」由该
+     * mixin 运行时按 {@code RecipeGuiLogicCompat.takeoverWanted()} 决定（没摘除坏 mixin 就
+     * 原样透传，绝不双包）。这里恒 true 是为了让它的 preApply 必然触发：万一客户端初始化
+     * 事件没走到，{@code RecipeGuiLogic} 被转换的这一刻是最后一次还来得及摘除的机会
+     * （本配置 priority 900，排在 ModularUI 的 1000 之前）。判定细节见 {@code RecipeGuiLogicCompat}。
+     */
     @Override
     public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
         return true;
@@ -145,6 +154,13 @@ public class JeiRecipeSlotCompatPlugin implements IMixinConfigPlugin {
     public void preApply(String targetClassName, ClassNode targetClass, String mixinClassName, IMixinInfo mixinInfo) {
         try {
             if (targetClass == null) {
+                return;
+            }
+            if (RECIPE_GUI_LOGIC.equals(targetClass.name)) {
+                // r70：正式处置在客户端初始化事件（远早于这个类被加载）；这里只是兜底——
+                // 万一那个事件没走到，此刻仍早于 ModularUI 配置对本类的 getMixinsFor 取值，
+                // 摘除照样赶得上。install 幂等、内部全程 try/catch。
+                cn.blockforge.gtmjeifix.RecipeGuiLogicCompat.install();
                 return;
             }
             if (RESEARCH_LAYOUT_TARGET.equals(targetClass.name)) {

@@ -8,7 +8,8 @@
     "plugin": "cn.blockforge.gtmjeifix.mixin.compat.JeiRecipeSlotCompatPlugin",
     "mixins": [
         "JeiRecipeSlotCompatMixin",
-        "ResearchLayoutCompatMixin"
+        "ResearchLayoutCompatMixin",
+        "RecipeGuiLogicMaxSizeMixin"
     ],
     "injectors": {
         "defaultRequire": 0

@@ -22,7 +22,7 @@ import java.util.List;
  * <p>三条子命令，全部只读或只做本模组内部的事，不碰世界数据：
  * <ul>
  * <li><b>{@code /gtmfix status}</b> —— 不改任何文件，把现在的实际状态念给你听：
- *     五个修复开关各是什么、聊天提醒/日志份数/两个写文件开关、配置读到没有、
+ *     六个修复开关各是什么（含 r70 新增的配方页布局兼容）、聊天提醒/日志份数/两个写文件开关、配置读到没有、
  *     多方块预览校正与弹出菜单校正各自的实时战况、各方块模组的版本号。
  *     r36 起还念：校正自检（每项修复的注入到底落没落地）、mods 里是不是装了好几份同名 jar、
  *     上一次启动是不是正常退出；r38 起还念：配置防呆结论（手改 toml 时哪几项没按你写的原样生效、
@@ -106,13 +106,14 @@ public final class GtmfixCommand {
         boolean crash = FixConfig.crashFixEnabled();
         boolean backfill = FixConfig.categoryBackfillEnabled();
         boolean compat = FixConfig.recipeSlotCompatEnabled();
+        boolean guiLogic = FixConfig.recipeGuiLogicCompatEnabled();
         boolean offset = FixConfig.multiblockOffsetEnabled();
         boolean menu = FixConfig.menuKeepOnScreenEnabled();
-        if (crash && backfill && compat && offset && menu) {
-            lines.add("五个修复全开着——其中多方块预览校正自 r58 起默认是关的，你这台开着，"
+        if (crash && backfill && compat && guiLogic && offset && menu) {
+            lines.add("六个修复开关全开着——其中多方块预览校正自 r58 起默认是关的，你这台开着，"
                     + "说明配置里写了 true（d73adfb/build 115 及更早的老快照适用；格雷官方自 36a6b38/build 124 起已修复该问题（r59 取证确认），新版开着图会双重补偿偏右下，建议改回 false）。");
-        } else if (!offset && crash && backfill && compat && menu) {
-            lines.add("其余四个修复全开着，多方块预览校正在按 r58 新默认关闭——格雷官方自快照 36a6b38"
+        } else if (!offset && crash && backfill && compat && guiLogic && menu) {
+            lines.add("其余五个修复全开着，多方块预览校正在按 r58 新默认关闭——格雷官方自快照 36a6b38"
                     + "（Maven build 124）起已修复该问题，这就是推荐状态；若你的格雷还是 d73adfb/build 115"
                     + " 及更早、JEI 里 3D 结构图仍偏左上角，"
                     + "把 fixes.enableMultiblockEmbedOffset 改成 true 再 /gtmfix reload 即可。");
@@ -128,6 +129,11 @@ public final class GtmfixCommand {
         }
         if (!compat) {
             lines.add("提醒：RecipeSlot 字段补丁以「本次启动第一次打开配方页之前」的取值为准，改完这条要重启才彻底重算。");
+        }
+        lines.add(cn.blockforge.gtmjeifix.RecipeGuiLogicCompat.statusLine());
+        if (!guiLogic) {
+            lines.add("提醒：配方页布局兼容在客户端初始化那一刻判定完（早于任何配方页被打开），改完这条要重启才重算；"
+                    + "关着的状态下，旧 ModularUI × JEI 19.7x 那个「一进世界/一开配方页就崩」会原样回来。");
         }
         lines.add("想改动：上面每一项都在配置文件里（[fixes]/[messages]/[logs]/[report] 四组，注释中英双语）；"
                 + "改完保存后敲 /gtmfix reload 立刻生效。");
